@@ -12,11 +12,11 @@ class GpsStatusCard extends StatelessWidget {
   final VoidCallback? onRefresh;
 
   const GpsStatusCard({
-    Key? key,
+    super.key,
     this.position,
     this.status = GpsStatus.inactive,
     this.onRefresh,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,10 @@ class GpsStatusCard extends StatelessWidget {
     final statusIcon = _getStatusIcon();
 
     return Container(
-      height: AppDimensions.gpsCardHeight,
+      constraints: BoxConstraints(
+        minHeight: AppDimensions.gpsCardHeight,
+        maxHeight: AppDimensions.gpsCardHeight + 40,
+      ),
       decoration: BoxDecoration(
         gradient: AppColors.oceanGradient,
         borderRadius: BorderRadius.circular(AppDimensions.radiusL),
@@ -88,6 +91,7 @@ class GpsStatusCard extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
@@ -97,10 +101,13 @@ class GpsStatusCard extends StatelessWidget {
                             size: AppDimensions.iconS,
                           ),
                           const SizedBox(width: AppDimensions.paddingXS),
-                          Text(
-                            statusText,
-                            style: AppTextStyles.labelLarge.copyWith(
-                              color: AppColors.white,
+                          Flexible(
+                            child: Text(
+                              statusText,
+                              style: AppTextStyles.labelLarge.copyWith(
+                                color: AppColors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -111,27 +118,35 @@ class GpsStatusCard extends StatelessWidget {
                           '위도: ${position!.latitude.toStringAsFixed(6)}',
                           style: AppTextStyles.gpsCoordinate.copyWith(
                             color: AppColors.white,
+                            fontSize: 12,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           '경도: ${position!.longitude.toStringAsFixed(6)}',
                           style: AppTextStyles.gpsCoordinate.copyWith(
                             color: AppColors.white,
+                            fontSize: 12,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         if (position!.accuracy != null)
                           Text(
                             '정확도: ±${position!.accuracy.toStringAsFixed(1)}m',
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.white.withOpacity(0.8),
+                              fontSize: 11,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                       ] else
                         Text(
                           '위치 정보를 가져올 수 없습니다',
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.white.withOpacity(0.8),
+                            fontSize: 12,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                     ],
                   ),

@@ -12,7 +12,7 @@ enum RecordMode { camera, detailed }
 class AddRecordScreen extends StatefulWidget {
   final RecordMode mode;
   
-  const AddRecordScreen({Key? key, required this.mode}) : super(key: key);
+  const AddRecordScreen({super.key, required this.mode});
 
   @override
   State<AddRecordScreen> createState() => _AddRecordScreenState();

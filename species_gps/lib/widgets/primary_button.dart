@@ -16,7 +16,7 @@ class PrimaryButton extends StatelessWidget {
   final bool isFullWidth;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
     this.size = ButtonSize.large,
@@ -24,7 +24,7 @@ class PrimaryButton extends StatelessWidget {
     this.icon,
     this.isLoading = false,
     this.isFullWidth = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -12,11 +12,12 @@ import '../widgets/primary_button.dart';
 import '../widgets/loading_indicator.dart';
 import '../core/utils/ui_helpers.dart';
 import '../services/export_service.dart';
-import 'add_record_screen_v2.dart';
+import 'add_record_screen_v3.dart';
 import 'records_list_screen_v2.dart';
+import 'map_screen.dart';
 
 class HomeScreenV2 extends StatefulWidget {
-  const HomeScreenV2({Key? key}) : super(key: key);
+  const HomeScreenV2({super.key});
 
   @override
   State<HomeScreenV2> createState() => _HomeScreenV2State();

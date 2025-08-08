@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/fishing_record.dart';
@@ -13,6 +14,7 @@ class AppStateProvider extends ChangeNotifier {
   Position? _currentPosition;
   bool _isLocationLoading = false;
   String? _locationError;
+  StreamSubscription<Position>? _locationStreamSubscription;
   
   // 기록 데이터
   List<FishingRecord> _records = [];
@@ -60,7 +62,10 @@ class AppStateProvider extends ChangeNotifier {
   
   /// 위치 스트림 시작
   void startLocationStream() {
-    LocationService.getPositionStream().listen(
+    // 기존 스트림이 있다면 취소
+    _locationStreamSubscription?.cancel();
+    
+    _locationStreamSubscription = LocationService.getPositionStream().listen(
       (position) {
         _currentPosition = position;
         _locationError = null;
@@ -71,6 +76,12 @@ class AppStateProvider extends ChangeNotifier {
         notifyListeners();
       },
     );
+  }
+  
+  /// 위치 스트림 중지
+  void stopLocationStream() {
+    _locationStreamSubscription?.cancel();
+    _locationStreamSubscription = null;
   }
   
   /// 기록 데이터 로드
@@ -186,6 +197,7 @@ class AppStateProvider extends ChangeNotifier {
   
   @override
   void dispose() {
+    _locationStreamSubscription?.cancel();
     _cameraService.dispose();
     super.dispose();
   }

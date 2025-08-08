@@ -18,9 +18,9 @@ class AddRecordScreenV2 extends StatefulWidget {
   final RecordMode mode;
   
   const AddRecordScreenV2({
-    Key? key,
+    super.key,
     required this.mode,
-  }) : super(key: key);
+  });
 
   @override
   State<AddRecordScreenV2> createState() => _AddRecordScreenV2State();

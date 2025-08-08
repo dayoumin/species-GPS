@@ -108,6 +108,17 @@ class DatabaseException extends AppException {
         code: 'DATABASE_DELETE_FAILED',
         originalError: error,
       );
+  
+  factory DatabaseException.updateFailed(dynamic error) => DatabaseException(
+        message: '데이터 수정에 실패했습니다.',
+        code: 'DATABASE_UPDATE_FAILED',
+        originalError: error,
+      );
+  
+  factory DatabaseException.notFound(String message) => DatabaseException(
+        message: message,
+        code: 'DATABASE_NOT_FOUND',
+      );
 }
 
 class StorageException extends AppException {
@@ -131,5 +142,24 @@ class StorageException extends AppException {
         message: '파일 저장에 실패했습니다.',
         code: 'STORAGE_SAVE_FAILED',
         originalError: error,
+      );
+}
+
+/// 권한 관련 예외
+class PermissionException extends AppException {
+  const PermissionException({
+    required String message,
+    String? code,
+    dynamic originalError,
+  }) : super(message: message, code: code, originalError: originalError);
+  
+  factory PermissionException.denied(String permission) => PermissionException(
+        message: '$permission 권한이 거부되었습니다.',
+        code: 'PERMISSION_DENIED',
+      );
+  
+  factory PermissionException.permanentlyDenied(String permission) => PermissionException(
+        message: '$permission 권한이 영구적으로 거부되었습니다. 설정에서 권한을 허용해주세요.',
+        code: 'PERMISSION_PERMANENTLY_DENIED',
       );
 }

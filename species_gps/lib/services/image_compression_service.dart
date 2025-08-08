@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as path;
 import '../core/errors/app_exception.dart';
@@ -113,7 +114,9 @@ class ImageCompressionService {
   /// 이미지 크기 계산
   static Future<ImageInfo> getImageInfo(File imageFile) async {
     final bytes = await imageFile.readAsBytes();
-    final decodedImage = await decodeImageFromList(bytes);
+    final codec = await instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final decodedImage = frame.image;
     
     return ImageInfo(
       width: decodedImage.width,
@@ -149,6 +152,3 @@ class ImageInfo {
   double get sizeInMB => sizeInBytes / (1024 * 1024);
   double get aspectRatio => width / height;
 }
-
-// 필요한 import 추가
-import 'dart:ui';

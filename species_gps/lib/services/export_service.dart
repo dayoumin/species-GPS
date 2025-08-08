@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -10,7 +11,6 @@ import 'package:intl/intl.dart';
 import '../models/fishing_record.dart';
 import '../core/errors/app_exception.dart';
 import '../core/utils/result.dart';
-import '../core/utils/file_helpers.dart';
 
 /// 데이터 내보내기 서비스
 class ExportService {
@@ -198,7 +198,7 @@ class ExportService {
       return Result.success(null);
     } catch (e) {
       return Result.failure(
-        AppException(
+        StorageException(
           message: '파일 공유에 실패했습니다.',
           originalError: e,
         ),
@@ -224,7 +224,7 @@ class ExportService {
       return Result.success(null);
     } catch (e) {
       return Result.failure(
-        AppException(
+        StorageException(
           message: '파일 공유에 실패했습니다.',
           originalError: e,
         ),
@@ -359,6 +359,3 @@ class ExportService {
     );
   }
 }
-
-// 필요한 import 추가
-import 'dart:convert';

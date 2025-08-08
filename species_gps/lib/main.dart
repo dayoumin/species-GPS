@@ -3,11 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
+import 'core/utils/app_logger.dart';
 import 'providers/app_state_provider.dart';
 import 'screens/home_screen_v2.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 로거 초기화
+  AppLogger.init();
   
   // 시스템 UI 설정
   SystemChrome.setSystemUIOverlayStyle(
@@ -27,7 +31,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +53,7 @@ class MyApp extends StatelessWidget {
 
 /// 스플래시 스크린
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();

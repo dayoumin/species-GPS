@@ -6,6 +6,7 @@ class FishingRecord {
   double longitude;
   double? accuracy;
   String? photoPath;
+  String? audioPath;
   String? notes;
   DateTime timestamp;
 
@@ -17,6 +18,7 @@ class FishingRecord {
     required this.longitude,
     this.accuracy,
     this.photoPath,
+    this.audioPath,
     this.notes,
     required this.timestamp,
   });
@@ -30,6 +32,7 @@ class FishingRecord {
       'longitude': longitude,
       'accuracy': accuracy,
       'photoPath': photoPath,
+      'audioPath': audioPath,
       'notes': notes,
       'timestamp': timestamp.millisecondsSinceEpoch,
     };
@@ -44,8 +47,35 @@ class FishingRecord {
       longitude: map['longitude'],
       accuracy: map['accuracy'],
       photoPath: map['photoPath'],
+      audioPath: map['audioPath'],
       notes: map['notes'],
       timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
+    );
+  }
+
+  FishingRecord copyWith({
+    int? id,
+    String? species,
+    int? count,
+    double? latitude,
+    double? longitude,
+    double? accuracy,
+    String? photoPath,
+    String? audioPath,
+    String? notes,
+    DateTime? timestamp,
+  }) {
+    return FishingRecord(
+      id: id ?? this.id,
+      species: species ?? this.species,
+      count: count ?? this.count,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      accuracy: accuracy ?? this.accuracy,
+      photoPath: photoPath ?? this.photoPath,
+      audioPath: audioPath ?? this.audioPath,
+      notes: notes ?? this.notes,
+      timestamp: timestamp ?? this.timestamp,
     );
   }
 }

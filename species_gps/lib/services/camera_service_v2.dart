@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
-import '../core/errors/app_exception.dart';
+import '../core/errors/app_exception.dart' as app_errors;
 import '../core/utils/result.dart';
 import '../core/utils/file_helpers.dart';
 import 'image_compression_service.dart';
@@ -33,7 +33,7 @@ class CameraServiceV2 {
       // 사용 가능한 카메라 가져오기
       _cameras = await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
-        return Result.failure(CameraException.notAvailable());
+        return Result.failure(app_errors.CameraException.notAvailable());
       }
       
       // 후면 카메라 우선, 없으면 첫 번째 카메라 사용
@@ -54,7 +54,7 @@ class CameraServiceV2 {
       
       return Result.success(null);
     } catch (e) {
-      return Result.failure(CameraException.initializationFailed(e));
+      return Result.failure(app_errors.CameraException.initializationFailed(e));
     }
   }
   
@@ -69,13 +69,13 @@ class CameraServiceV2 {
       }
       
       if (!isInitialized) {
-        return Result.failure(CameraException.notAvailable());
+        return Result.failure(app_errors.CameraException.notAvailable());
       }
       
       final photo = await _controller!.takePicture();
       return Result.success(photo);
     } catch (e) {
-      return Result.failure(CameraException.captureFailed(e));
+      return Result.failure(app_errors.CameraException.captureFailed(e));
     }
   }
   
@@ -128,7 +128,7 @@ class CameraServiceV2 {
       return Result.success(savedPath);
     } catch (e) {
       return Result.failure(
-        StorageException.saveFailed(e),
+        app_errors.StorageException.saveFailed(e),
       );
     }
   }
@@ -138,7 +138,7 @@ class CameraServiceV2 {
     try {
       if (_cameras == null || _cameras!.length < 2) {
         return Result.failure(
-          CameraException(message: '다른 카메라를 사용할 수 없습니다.'),
+          app_errors.CameraException(message: '다른 카메라를 사용할 수 없습니다.'),
         );
       }
       
@@ -160,7 +160,7 @@ class CameraServiceV2 {
       return Result.success(null);
     } catch (e) {
       return Result.failure(
-        CameraException(
+        app_errors.CameraException(
           message: '카메라 전환에 실패했습니다.',
           originalError: e,
         ),
@@ -172,14 +172,14 @@ class CameraServiceV2 {
   Future<Result<void>> setFlashMode(FlashMode mode) async {
     try {
       if (!isInitialized) {
-        return Result.failure(CameraException.notAvailable());
+        return Result.failure(app_errors.CameraException.notAvailable());
       }
       
       await _controller!.setFlashMode(mode);
       return Result.success(null);
     } catch (e) {
       return Result.failure(
-        CameraException(
+        app_errors.CameraException(
           message: '플래시 설정에 실패했습니다.',
           originalError: e,
         ),

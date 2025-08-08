@@ -47,4 +47,10 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+  
+  // Alias for common usage
+  static const Color primary = primaryBlue;
+  static const Color secondary = secondaryGreen;
+  static const Color primaryColor = primaryBlue;
+  static const Color secondaryColor = secondaryGreen;
 }

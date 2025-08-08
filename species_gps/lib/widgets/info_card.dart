@@ -15,7 +15,7 @@ class InfoCard extends StatelessWidget {
   final Widget? trailing;
 
   const InfoCard({
-    Key? key,
+    super.key,
     required this.title,
     this.subtitle,
     this.content,
@@ -23,7 +23,7 @@ class InfoCard extends StatelessWidget {
     this.type = InfoCardType.info,
     this.onTap,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

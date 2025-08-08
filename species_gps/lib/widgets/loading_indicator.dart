@@ -9,11 +9,11 @@ class LoadingIndicator extends StatelessWidget {
   final Color? color;
 
   const LoadingIndicator({
-    Key? key,
+    super.key,
     this.message,
     this.isFullScreen = true,
     this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

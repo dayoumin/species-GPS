@@ -13,7 +13,7 @@ import '../widgets/primary_button.dart';
 import '../services/export_service.dart';
 
 class RecordsListScreenV2 extends StatefulWidget {
-  const RecordsListScreenV2({Key? key}) : super(key: key);
+  const RecordsListScreenV2({super.key});
 
   @override
   State<RecordsListScreenV2> createState() => _RecordsListScreenV2State();

@@ -32,6 +32,7 @@ class DatabaseService {
         longitude REAL NOT NULL,
         accuracy REAL,
         photoPath TEXT,
+        audioPath TEXT,
         notes TEXT,
         timestamp INTEGER NOT NULL
       )
@@ -136,5 +137,64 @@ class DatabaseService {
       speciesCount[row['species']] = row['total'] as int;
     }
     return speciesCount;
+  }
+  
+  /// 페이징된 레코드 조회
+  static Future<List<FishingRecord>> getRecordsPaged({
+    required int offset,
+    required int limit,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return getRecords(
+      limit: limit,
+      offset: offset,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+  
+  /// 특정 종의 레코드 개수 조회
+  static Future<int> getSpeciesRecordCount(String species) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) FROM $_tableName WHERE species = ?',
+      [species],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+  
+  /// 날짜별 레코드 개수 조회
+  static Future<Map<DateTime, int>> getRecordCountByDate({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final db = await database;
+    
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+    
+    if (startDate != null && endDate != null) {
+      whereClause = ' WHERE timestamp BETWEEN ? AND ?';
+      whereArgs = [
+        startDate.millisecondsSinceEpoch,
+        endDate.millisecondsSinceEpoch,
+      ];
+    }
+    
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT DATE(timestamp/1000, "unixepoch") as date, COUNT(*) as count '
+      'FROM $_tableName$whereClause '
+      'GROUP BY date ORDER BY date DESC',
+      whereArgs,
+    );
+    
+    Map<DateTime, int> countByDate = {};
+    for (var row in result) {
+      final dateStr = row['date'] as String;
+      final date = DateTime.parse(dateStr);
+      countByDate[date] = row['count'] as int;
+    }
+    return countByDate;
   }
 }

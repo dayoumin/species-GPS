@@ -5,7 +5,7 @@ import '../models/fishing_record.dart';
 import '../services/database_service.dart';
 
 class RecordsListScreen extends StatefulWidget {
-  const RecordsListScreen({Key? key}) : super(key: key);
+  const RecordsListScreen({super.key});
 
   @override
   State<RecordsListScreen> createState() => _RecordsListScreenState();
