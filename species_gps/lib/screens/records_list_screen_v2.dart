@@ -61,29 +61,6 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
     }).toList();
   }
 
-  void _showFilterDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppDimensions.radiusXL),
-        ),
-      ),
-      builder: (context) => _FilterBottomSheet(
-        selectedSpecies: _selectedSpecies,
-        selectedDate: _selectedDate,
-        selectedPeriod: _selectedPeriod,
-        onApply: (species, date, period) {
-          setState(() {
-            _selectedSpecies = species;
-            _selectedDate = date;
-            _selectedPeriod = period ?? '전체';
-          });
-          Navigator.pop(context);
-        },
-      ),
-    );
-  }
 
   void _showExportOptions() {
     showModalBottomSheet(
@@ -471,11 +448,6 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
-            tooltip: '필터',
-          ),
-          IconButton(
             icon: const Icon(Icons.download),
             onPressed: () => _showExportOptions(),
             tooltip: '내보내기',
@@ -533,65 +505,151 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
           ),
         ),
       ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: _onSearchChanged,
-        style: TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 16,
-        ),
-        decoration: InputDecoration(
-          hintText: '어종, 메모, 날짜 검색...',
-          hintStyle: TextStyle(
-            color: AppColors.textHint,
-            fontSize: 16,
-          ),
-          prefixIcon: Icon(
-            Icons.search,
-            color: AppColors.primaryBlue,
-            size: 24,
-          ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: Icon(
-                    Icons.clear,
-                    color: AppColors.textSecondary,
-                  ),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearchChanged('');
-                  },
-                )
-              : null,
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: Colors.grey[300]!,
-              width: 1,
+      child: Column(
+        children: [
+          // 검색 입력 필드
+          TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              hintText: '어종, 메모, 날짜 검색...',
+              hintStyle: TextStyle(
+                color: AppColors.textHint,
+                fontSize: 16,
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: AppColors.primaryBlue,
+                size: 24,
+              ),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        color: AppColors.textSecondary,
+                      ),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: AppColors.primaryBlue,
+                  width: 2,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                  width: 1,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
             ),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: AppColors.primaryBlue,
-              width: 2,
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: Colors.grey[300]!,
-              width: 1,
-            ),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
+          
+          const SizedBox(height: AppDimensions.paddingM),
+          
+          // 어종 선택 섹션
+          _buildSpeciesFilter(),
+        ],
       ),
+    );
+  }
+
+  Widget _buildSpeciesFilter() {
+    return Consumer<AppStateProvider>(
+      builder: (context, provider, child) {
+        final availableSpecies = provider.speciesCount.keys.toList()..sort();
+        
+        return Row(
+          children: [
+            Icon(
+              Icons.pets,
+              color: AppColors.primaryBlue,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              '어종:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    // 전체 선택 칩
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: const Text('전체'),
+                        selected: _selectedSpecies == null,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedSpecies = selected ? null : _selectedSpecies;
+                          });
+                        },
+                        selectedColor: AppColors.primaryBlue,
+                        labelStyle: TextStyle(
+                          color: _selectedSpecies == null ? Colors.white : AppColors.textPrimary,
+                          fontWeight: _selectedSpecies == null ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                    // 어종별 칩들
+                    ...availableSpecies.map((species) {
+                      final isSelected = _selectedSpecies == species;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(species),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              _selectedSpecies = selected ? species : null;
+                            });
+                          },
+                          selectedColor: AppColors.primaryBlue,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : AppColors.textPrimary,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -701,20 +759,34 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
 
     return Column(
       children: [
-        // 기간 선택 헤더
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(AppDimensions.paddingM),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.divider,
-                width: 1,
-              ),
-            ),
+        // 통계 필터 섹션
+        _buildStatisticsFilterSection(provider),
+        
+        // 통계 내용
+        Expanded(
+          child: _buildStatisticsContent(records),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatisticsFilterSection(AppStateProvider provider) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppDimensions.paddingM),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.divider,
+            width: 1,
           ),
-          child: Row(
+        ),
+      ),
+      child: Column(
+        children: [
+          // 기간 선택
+          Row(
             children: [
               Icon(
                 Icons.schedule,
@@ -731,9 +803,10 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+                child: Container(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
                     children: ['전체', '주간', '월별', '분기', '년도'].map((period) {
                       final isSelected = _selectedPeriod == period;
                       return Padding(
@@ -759,13 +832,79 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
               ),
             ],
           ),
-        ),
-        
-        // 통계 내용
-        Expanded(
-          child: _buildStatisticsContent(records),
-        ),
-      ],
+          
+          const SizedBox(height: AppDimensions.paddingM),
+          
+          // 어종 선택 (통계용)
+          Row(
+            children: [
+              Icon(
+                Icons.pets,
+                color: AppColors.primaryBlue,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '어종:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      // 전체 선택 칩
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: const Text('전체'),
+                          selected: _selectedSpecies == null,
+                          onSelected: (selected) {
+                            setState(() {
+                              _selectedSpecies = selected ? null : _selectedSpecies;
+                            });
+                          },
+                          selectedColor: AppColors.primaryBlue,
+                          labelStyle: TextStyle(
+                            color: _selectedSpecies == null ? Colors.white : AppColors.textPrimary,
+                            fontWeight: _selectedSpecies == null ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      // 어종별 칩들
+                      ...(provider.speciesCount.keys.toList()..sort()).map((species) {
+                        final isSelected = _selectedSpecies == species;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(species),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedSpecies = selected ? species : null;
+                              });
+                            },
+                            selectedColor: AppColors.primaryBlue,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1041,145 +1180,6 @@ class _RecordCard extends StatelessWidget {
   }
 }
 
-// 필터 바텀시트
-class _FilterBottomSheet extends StatefulWidget {
-  final String? selectedSpecies;
-  final DateTime? selectedDate;
-  final String selectedPeriod;
-  final Function(String?, DateTime?, String?) onApply;
-
-  const _FilterBottomSheet({
-    this.selectedSpecies,
-    this.selectedDate,
-    required this.selectedPeriod,
-    required this.onApply,
-  });
-
-  @override
-  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
-}
-
-class _FilterBottomSheetState extends State<_FilterBottomSheet> {
-  String? _species;
-  DateTime? _date;
-  String _period = '전체';
-
-  @override
-  void initState() {
-    super.initState();
-    _species = widget.selectedSpecies;
-    _date = widget.selectedDate;
-    _period = widget.selectedPeriod;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.read<AppStateProvider>();
-    final speciesList = provider.speciesCount.keys.toList();
-
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingL),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '필터',
-            style: AppTextStyles.headlineMedium,
-          ),
-          const SizedBox(height: AppDimensions.paddingL),
-          
-          // 어종 선택
-          DropdownButtonFormField<String?>(
-            value: _species,
-            decoration: const InputDecoration(
-              labelText: '어종',
-              prefixIcon: Icon(Icons.pets),
-            ),
-            items: [
-              const DropdownMenuItem(
-                value: null,
-                child: Text('전체'),
-              ),
-              ...speciesList.map((species) => DropdownMenuItem(
-                value: species,
-                child: Text(species),
-              )),
-            ],
-            onChanged: (value) {
-              setState(() => _species = value);
-            },
-          ),
-          const SizedBox(height: AppDimensions.paddingM),
-          
-          // 기간 선택
-          DropdownButtonFormField<String>(
-            value: _period,
-            decoration: const InputDecoration(
-              labelText: '통계 기간',
-              prefixIcon: Icon(Icons.schedule),
-            ),
-            items: ['전체', '주간', '월별', '분기', '년도'].map((period) => DropdownMenuItem(
-              value: period,
-              child: Text(period),
-            )).toList(),
-            onChanged: (value) {
-              setState(() => _period = value ?? '전체');
-            },
-          ),
-          const SizedBox(height: AppDimensions.paddingM),
-          
-          // 날짜 선택
-          ListTile(
-            leading: const Icon(Icons.calendar_today),
-            title: Text(_date == null 
-                ? '날짜 선택' 
-                : DateFormat('yyyy-MM-dd').format(_date!)),
-            trailing: _date != null 
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => setState(() => _date = null),
-                  )
-                : null,
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _date ?? DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) {
-                setState(() => _date = picked);
-              }
-            },
-          ),
-          const SizedBox(height: AppDimensions.paddingL),
-          
-          // 버튼
-          Row(
-            children: [
-              Expanded(
-                child: PrimaryButton(
-                  text: '초기화',
-                  onPressed: () => widget.onApply(null, null, '전체'),
-                  variant: ButtonVariant.outline,
-                ),
-              ),
-              const SizedBox(width: AppDimensions.paddingM),
-              Expanded(
-                child: PrimaryButton(
-                  text: '적용',
-                  onPressed: () => widget.onApply(_species, _date, _period),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDimensions.paddingM),
-        ],
-      ),
-    );
-  }
-}
 
 // 상세 정보 다이얼로그
 class _RecordDetailDialog extends StatelessWidget {
