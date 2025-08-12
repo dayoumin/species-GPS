@@ -25,11 +25,11 @@ class AppDimensions {
   static const double iconXL = 40.0;
   static const double iconXXL = 48.0;
   
-  // Button Heights
-  static const double buttonHeightS = 36.0;
-  static const double buttonHeightM = 44.0;
-  static const double buttonHeightL = 52.0;
-  static const double buttonHeightXL = 60.0;
+  // Button Heights - 바다 작업 환경 고려 (젖은 손, 장갑 착용)
+  static const double buttonHeightS = 44.0;
+  static const double buttonHeightM = 56.0;
+  static const double buttonHeightL = 64.0;
+  static const double buttonHeightXL = 72.0;
   
   // Touch Target
   static const double minTouchTarget = 48.0; // Material Design minimum

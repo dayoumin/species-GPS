@@ -12,9 +12,12 @@ import '../widgets/primary_button.dart';
 import '../widgets/loading_indicator.dart';
 import '../core/utils/ui_helpers.dart';
 import '../services/export_service.dart';
+import '../services/storage_service.dart';
 import 'add_record_screen_v3.dart';
 import 'records_list_screen_v2.dart';
 import 'map_screen.dart';
+import 'map_screen_debug.dart';
+import 'data_analysis_screen.dart';
 
 class HomeScreenV2 extends StatefulWidget {
   const HomeScreenV2({super.key});
@@ -53,6 +56,14 @@ class _HomeScreenV2State extends State<HomeScreenV2>
   Future<void> _initializeData() async {
     final provider = context.read<AppStateProvider>();
     await provider.updateLocation();
+    
+    // 웹 환경에서 샘플 데이터 추가 (최초 1회만)
+    if (Theme.of(context).platform == TargetPlatform.windows || 
+        Theme.of(context).platform == TargetPlatform.linux ||
+        Theme.of(context).platform == TargetPlatform.macOS) {
+      await StorageService.addSampleData();
+    }
+    
     await provider.loadRecords();
     provider.startLocationStream();
   }
@@ -143,6 +154,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                                     ? GpsStatus.active
                                     : GpsStatus.inactive,
                             onRefresh: provider.updateLocation,
+                            onMapTap: () => _navigateToMap(context),
                           ),
                           const SizedBox(height: AppDimensions.paddingL),
                           
@@ -264,41 +276,164 @@ class _HomeScreenV2State extends State<HomeScreenV2>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '빠른 기록',
-          style: AppTextStyles.headlineMedium,
-        ),
-        const SizedBox(height: AppDimensions.paddingM),
-        PrimaryButton(
-          text: '사진으로 빠른 기록',
-          icon: Icons.camera_alt,
-          onPressed: () => _navigateToAddRecord(
-            context,
-            RecordMode.camera,
+          '작업 기록',
+          style: AppTextStyles.headlineMedium.copyWith(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
-          variant: ButtonVariant.primary,
         ),
-        const SizedBox(height: AppDimensions.paddingM),
-        PrimaryButton(
-          text: '상세 기록 입력',
-          icon: Icons.edit,
-          onPressed: () => _navigateToAddRecord(
-            context,
-            RecordMode.detailed,
+        const SizedBox(height: AppDimensions.paddingL),
+        
+        // 기록 추가 - 하나로 통합
+        Container(
+          decoration: BoxDecoration(
+            gradient: AppColors.oceanGradient,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryBlue.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          variant: ButtonVariant.secondary,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _navigateToAddRecord(context),
+              child: Padding(
+                padding: const EdgeInsets.all(AppDimensions.paddingXL),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.add_circle,
+                        color: AppColors.white,
+                        size: 40,
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.paddingXL),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '새 기록 추가',
+                            style: AppTextStyles.headlineSmall.copyWith(
+                              color: AppColors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '사진, GPS, 음성, 메모 - 필요한 만큼 기록',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.white.withValues(alpha: 0.9),
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: AppColors.white.withValues(alpha: 0.8),
+                      size: 28,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
-        const SizedBox(height: AppDimensions.paddingM),
-        PrimaryButton(
-          text: '기록 조회',
-          icon: Icons.list_alt,
-          onPressed: () => _navigateToRecordsList(context),
-          variant: ButtonVariant.outline,
+        
+        const SizedBox(height: AppDimensions.paddingL),
+        
+        // 기록 조회 버튼
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primaryBlue.withValues(alpha: 0.3),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _navigateToRecordsList(context),
+              child: Padding(
+                padding: const EdgeInsets.all(AppDimensions.paddingL),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.list_alt,
+                        color: AppColors.primaryBlue,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.paddingL),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '기록 조회',
+                            style: AppTextStyles.headlineSmall.copyWith(
+                              color: AppColors.textPrimary,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '저장된 기록 보기 및 내보내기',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: AppColors.textSecondary.withValues(alpha: 0.5),
+                      size: 24,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  void _navigateToAddRecord(BuildContext context, RecordMode mode) {
+  void _navigateToAddRecord(BuildContext context) {
     final provider = context.read<AppStateProvider>();
     
     if (!provider.hasLocation) {
@@ -313,7 +448,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddRecordScreenV2(mode: mode),
+        builder: (context) => const AddRecordScreenV3(),
       ),
     ).then((success) {
       if (success == true) {
@@ -330,36 +465,73 @@ class _HomeScreenV2State extends State<HomeScreenV2>
       ),
     );
   }
+
+  void _navigateToMap(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MapScreen(), // 원래 지도 화면으로 복원
+      ),
+    );
+  }
   
   Widget _buildQuickExportSection(AppStateProvider provider) {
-    return InfoCard(
-      title: '빠른 내보내기',
-      subtitle: '오늘의 기록을 즉시 내보낼 수 있습니다',
-      icon: Icons.file_download,
-      type: InfoCardType.info,
-      content: Row(
-        children: [
-          Expanded(
-            child: PrimaryButton(
-              text: 'CSV',
-              icon: Icons.table_chart,
-              size: ButtonSize.small,
-              variant: ButtonVariant.outline,
-              onPressed: () => _quickExport('csv'),
-            ),
+    return Column(
+      children: [
+        InfoCard(
+          title: '데이터 관리',
+          subtitle: '기록을 분석하고 내보낼 수 있습니다',
+          icon: Icons.insights,
+          type: InfoCardType.info,
+          content: Column(
+            children: [
+              // 데이터 분석 버튼
+              SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  text: '데이터 분석 (지도 시각화)',
+                  icon: Icons.analytics,
+                  size: ButtonSize.medium,
+                  variant: ButtonVariant.primary,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DataAnalysisScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: AppDimensions.paddingM),
+              // 내보내기 버튼들
+              Row(
+                children: [
+                  Expanded(
+                    child: PrimaryButton(
+                      text: 'CSV',
+                      icon: Icons.table_chart,
+                      size: ButtonSize.small,
+                      variant: ButtonVariant.outline,
+                      onPressed: () => _quickExport('csv'),
+                    ),
+                  ),
+                  const SizedBox(width: AppDimensions.paddingM),
+                  Expanded(
+                    child: PrimaryButton(
+                      text: 'PDF',
+                      icon: Icons.picture_as_pdf,
+                      size: ButtonSize.small,
+                      variant: ButtonVariant.outline,
+                      onPressed: () => _quickExport('pdf'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(width: AppDimensions.paddingM),
-          Expanded(
-            child: PrimaryButton(
-              text: 'PDF',
-              icon: Icons.picture_as_pdf,
-              size: ButtonSize.small,
-              variant: ButtonVariant.outline,
-              onPressed: () => _quickExport('pdf'),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
   

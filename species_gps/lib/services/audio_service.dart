@@ -39,7 +39,7 @@ class AudioService {
         return Result.success(null);
       } else {
         return Result.failure(
-          AppException(
+          PermissionException(
             message: '음성 인식을 사용할 수 없습니다',
             code: 'SPEECH_INIT_FAILED',
           ),
@@ -48,7 +48,7 @@ class AudioService {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to initialize speech recognition', e, stackTrace);
       return Result.failure(
-        AppException(
+        PermissionException(
           message: '음성 인식 초기화 실패',
           code: 'SPEECH_INIT_ERROR',
           originalError: e,
@@ -94,7 +94,7 @@ class AudioService {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to start recording', e, stackTrace);
       return Result.failure(
-        AppException(
+        StorageException(
           message: '녹음 시작 실패',
           code: 'RECORDING_START_FAILED',
           originalError: e,
@@ -108,7 +108,7 @@ class AudioService {
     try {
       if (!_isRecording) {
         return Result.failure(
-          AppException(
+          StorageException(
             message: '녹음 중이 아닙니다',
             code: 'NOT_RECORDING',
           ),
@@ -123,7 +123,7 @@ class AudioService {
         return Result.success(path);
       } else {
         return Result.failure(
-          AppException(
+          StorageException(
             message: '녹음 파일 저장 실패',
             code: 'RECORDING_SAVE_FAILED',
           ),
@@ -132,7 +132,7 @@ class AudioService {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to stop recording', e, stackTrace);
       return Result.failure(
-        AppException(
+        StorageException(
           message: '녹음 중지 실패',
           code: 'RECORDING_STOP_FAILED',
           originalError: e,
@@ -145,6 +145,7 @@ class AudioService {
   Future<Result<void>> startListening({
     required Function(String text) onResult,
     Function(String finalText)? onFinalResult,
+    Duration? pauseFor,  // 사용자 정의 가능한 일시정지 시간
   }) async {
     try {
       if (!_isSpeechEnabled) {
@@ -168,7 +169,7 @@ class AudioService {
           AppLogger.debug('Speech recognition result: $_recognizedText (final: ${result.finalResult})');
         },
         listenMode: ListenMode.dictation,
-        pauseFor: const Duration(seconds: 3),
+        pauseFor: pauseFor ?? const Duration(seconds: 10), // 기본값 10초로 증가
         partialResults: true,
         localeId: 'ko_KR', // 한국어 설정
       );
@@ -178,7 +179,7 @@ class AudioService {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to start listening', e, stackTrace);
       return Result.failure(
-        AppException(
+        PermissionException(
           message: '음성 인식 시작 실패',
           code: 'LISTENING_START_FAILED',
           originalError: e,
@@ -199,7 +200,7 @@ class AudioService {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to stop listening', e, stackTrace);
       return Result.failure(
-        AppException(
+        PermissionException(
           message: '음성 인식 중지 실패',
           code: 'LISTENING_STOP_FAILED',
           originalError: e,

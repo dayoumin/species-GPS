@@ -3,9 +3,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
+import '../core/theme/app_text_styles.dart';
+import '../core/utils/date_formatter.dart';
 import '../models/fishing_record.dart';
+import '../providers/map_state_provider.dart';
 
 /// 지도 위젯 - 현재 위치 및 기록 위치 표시
 class MapWidget extends StatefulWidget {
@@ -15,6 +19,11 @@ class MapWidget extends StatefulWidget {
   final bool showRecords;
   final double initialZoom;
   final Function(FishingRecord)? onRecordTap;
+  final MapController? mapController;  // 외부에서 전달받을 수 있도록 추가
+  final List<Map<String, dynamic>>? customMarkers;  // 커스텀 마커 추가
+  final Function(double lat, double lng)? onMapTap;  // 지도 탭 콜백 추가
+  final Function(Map<String, dynamic>)? onMarkerTap;  // 마커 탭 콜백 추가
+  final Function(int id, double lat, double lng)? onMarkerDragEnd;  // 마커 드래그 완료 콜백
 
   const MapWidget({
     super.key,
@@ -24,6 +33,11 @@ class MapWidget extends StatefulWidget {
     this.showRecords = true,
     this.initialZoom = 13.0,
     this.onRecordTap,
+    this.mapController,
+    this.customMarkers,
+    this.onMapTap,
+    this.onMarkerTap,
+    this.onMarkerDragEnd,
   });
 
   @override
@@ -32,11 +46,14 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   late MapController _mapController;
+  int? _draggingMarkerId;  // 현재 드래그 중인 마커 ID
+  bool _isDragging = false;  // 드래그 상태
   
   @override
   void initState() {
     super.initState();
-    _mapController = MapController();
+    // 외부에서 전달받은 MapController가 있으면 사용, 없으면 새로 생성
+    _mapController = widget.mapController ?? MapController();
   }
   
   @override
@@ -64,6 +81,18 @@ class _MapWidgetState extends State<MapWidget> {
           interactionOptions: const InteractionOptions(
             flags: InteractiveFlag.all,
           ),
+          onTap: (tapPosition, latLng) {
+            // 드래그 중일 때는 드래그 완료
+            if (_isDragging) {
+              _finishDragging();
+            } else if (widget.onMapTap != null) {
+              widget.onMapTap!(latLng.latitude, latLng.longitude);
+            }
+          },
+          onPositionChanged: (position, hasGesture) {
+            // 드래그 중일 때는 실시간 업데이트하지 않음 (성능상 이유)
+            // 최종 위치는 탭으로 확정할 때 업데이트
+          },
         ),
         children: [
           // OpenStreetMap 타일 레이어
@@ -95,73 +124,187 @@ class _MapWidgetState extends State<MapWidget> {
               ],
             ),
           
-          // 지도 컨트롤
+          // 현재 위치로 이동 버튼 - 우측 하단
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
-              padding: const EdgeInsets.all(AppDimensions.paddingM),
+              padding: const EdgeInsets.all(AppDimensions.paddingL),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: AppColors.oceanGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: widget.currentPosition != null ? () {
+                      _mapController.move(
+                        LatLng(
+                          widget.currentPosition!.latitude,
+                          widget.currentPosition!.longitude,
+                        ),
+                        15.0,
+                      );
+                      // 시각적 피드백
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('현재 위치로 이동'),
+                          duration: Duration(seconds: 1),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    } : null,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Icon(
+                        Icons.my_location,
+                        color: widget.currentPosition != null 
+                            ? AppColors.white 
+                            : AppColors.white.withValues(alpha: 0.5),
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // 줌 컨트롤 - 현재 위치 버튼 위에 배치
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: AppDimensions.paddingL,
+                bottom: 120, // 현재 위치 버튼 위에 위치
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 현재 위치로 이동 버튼
-                  if (widget.currentPosition != null)
-                    FloatingActionButton.small(
-                      heroTag: 'currentLocation',
-                      onPressed: () {
-                        _mapController.move(
-                          LatLng(
-                            widget.currentPosition!.latitude,
-                            widget.currentPosition!.longitude,
-                          ),
-                          15.0,
-                        );
-                      },
-                      backgroundColor: AppColors.white,
-                      child: const Icon(
-                        Icons.my_location,
-                        color: AppColors.primaryBlue,
+                  // 줌 인 버튼 - 네모 모양
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          topRight: Radius.circular(8),
+                        ),
+                        onTap: () {
+                          final currentZoom = _mapController.camera.zoom;
+                          if (currentZoom < 18) {
+                            _mapController.move(
+                              _mapController.camera.center,
+                              currentZoom + 1,
+                            );
+                          }
+                        },
+                        child: const Icon(
+                          Icons.add,
+                          color: AppColors.textPrimary,
+                          size: 30,
+                        ),
                       ),
                     ),
-                  const SizedBox(height: AppDimensions.paddingS),
-                  
-                  // 줌 인 버튼
-                  FloatingActionButton.small(
-                    heroTag: 'zoomIn',
-                    onPressed: () {
-                      final currentZoom = _mapController.camera.zoom;
-                      _mapController.move(
-                        _mapController.camera.center,
-                        currentZoom + 1,
-                      );
-                    },
-                    backgroundColor: AppColors.white,
-                    child: const Icon(
-                      Icons.add,
-                      color: AppColors.textPrimary,
-                    ),
                   ),
-                  const SizedBox(height: AppDimensions.paddingS),
-                  
-                  // 줌 아웃 버튼
-                  FloatingActionButton.small(
-                    heroTag: 'zoomOut',
-                    onPressed: () {
-                      final currentZoom = _mapController.camera.zoom;
-                      _mapController.move(
-                        _mapController.camera.center,
-                        currentZoom - 1,
-                      );
-                    },
-                    backgroundColor: AppColors.white,
-                    child: const Icon(
-                      Icons.remove,
-                      color: AppColors.textPrimary,
+                  // 구분선
+                  Container(
+                    width: 50,
+                    height: 1,
+                    color: AppColors.divider,
+                  ),
+                  // 줌 아웃 버튼 - 네모 모양
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(8),
+                          bottomRight: Radius.circular(8),
+                        ),
+                        onTap: () {
+                          final currentZoom = _mapController.camera.zoom;
+                          if (currentZoom > 5) {
+                            _mapController.move(
+                              _mapController.camera.center,
+                              currentZoom - 1,
+                            );
+                          }
+                        },
+                        child: const Icon(
+                          Icons.remove,
+                          color: AppColors.textPrimary,
+                          size: 30,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
+          
+          // 드래그 모드 크로스헤어
+          if (_isDragging)
+            Center(
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.error,
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.drag_indicator,
+                  color: AppColors.error,
+                  size: 30,
+                ),
+              ),
+            ),
           
           // 저작권 표시
           const Align(
@@ -205,7 +348,7 @@ class _MapWidgetState extends State<MapWidget> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.info.withOpacity(0.5),
+                  color: AppColors.info.withValues(alpha: 0.5),
                   blurRadius: 10,
                   spreadRadius: 2,
                 ),
@@ -219,6 +362,61 @@ class _MapWidgetState extends State<MapWidget> {
           ),
         ),
       );
+    }
+    
+    // 커스텀 마커들 추가
+    if (widget.customMarkers != null) {
+      for (final markerData in widget.customMarkers!) {
+        final markerId = markerData['id'] as int;
+        final isDraggingThis = _draggingMarkerId == markerId;
+        
+        markers.add(
+          Marker(
+            point: LatLng(markerData['lat'], markerData['lng']),
+            width: 40,
+            height: 40,
+            child: GestureDetector(
+              onTap: () {
+                // 드래그 중이 아닐 때만 탭 이벤트 처리
+                if (!_isDragging) {
+                  if (widget.onMarkerTap != null) {
+                    widget.onMarkerTap!(markerData);
+                  } else {
+                    _showMarkerOptions(markerData);
+                  }
+                }
+              },
+              onLongPress: () {
+                // 롱프레스로 드래그 모드 시작
+                _startDragging(markerId, markerData['lat'], markerData['lng']);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDraggingThis ? AppColors.error : AppColors.warning,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.white,
+                    width: isDraggingThis ? 3 : 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isDraggingThis ? AppColors.error : AppColors.warning)
+                          .withValues(alpha: 0.5),
+                      blurRadius: isDraggingThis ? 12 : 8,
+                      spreadRadius: isDraggingThis ? 2 : 1,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  isDraggingThis ? Icons.drag_indicator : Icons.flag,
+                  color: AppColors.white,
+                  size: isDraggingThis ? 22 : 20,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
     }
     
     // 기록 위치 마커들
@@ -247,7 +445,7 @@ class _MapWidgetState extends State<MapWidget> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.secondaryGreen.withOpacity(0.5),
+                      color: AppColors.secondaryGreen.withValues(alpha: 0.5),
                       blurRadius: 8,
                       spreadRadius: 1,
                     ),
@@ -268,38 +466,299 @@ class _MapWidgetState extends State<MapWidget> {
     return markers;
   }
   
-  void _showRecordDetails(FishingRecord record) {
-    showDialog(
+  void _startDragging(int markerId, double lat, double lng) {
+    setState(() {
+      _draggingMarkerId = markerId;
+      _isDragging = true;
+    });
+    
+    // 마커 위치로 지도 중심 이동
+    _mapController.move(LatLng(lat, lng), _mapController.camera.zoom);
+    
+    // 진동 피드백 (가능한 경우)
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.drag_indicator, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Text('마커를 드래그하여 이동하세요. 탭하면 완료됩니다.'),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: '완료',
+            textColor: Colors.white,
+            onPressed: () => _finishDragging(),
+          ),
+        ),
+      );
+    }
+  }
+  
+  void _finishDragging() {
+    if (_isDragging && _draggingMarkerId != null) {
+      final center = _mapController.camera.center;
+      
+      // 위치 업데이트 콜백 호출
+      if (widget.onMarkerDragEnd != null) {
+        widget.onMarkerDragEnd!(_draggingMarkerId!, center.latitude, center.longitude);
+      }
+      
+      setState(() {
+        _isDragging = false;
+        _draggingMarkerId = null;
+      });
+      
+      // 완료 피드백
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('마커 위치가 업데이트되었습니다.'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+  
+  void _showMarkerOptions(Map<String, dynamic> markerData) {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(record.species ?? '기록'),
-        content: Column(
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(AppDimensions.radiusL),
+            topRight: Radius.circular(AppDimensions.radiusL),
+          ),
+        ),
+        padding: const EdgeInsets.all(AppDimensions.paddingL),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 핸들 바
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: AppDimensions.paddingL),
+            
+            // 마커 정보
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.flag,
+                    color: AppColors.warning,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        markerData['memo'] ?? '마커',
+                        style: AppTextStyles.headlineSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '위도: ${markerData['lat'].toStringAsFixed(6)}',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                      Text(
+                        '경도: ${markerData['lng'].toStringAsFixed(6)}',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppDimensions.paddingL),
+            
+            // 삭제 버튼
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // MapStateProvider를 통해 삭제
+                  if (context.mounted) {
+                    try {
+                      final mapState = context.read<MapStateProvider>();
+                      mapState.removeMarker(markerData['id']);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('마커가 삭제되었습니다'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    } catch (e) {
+                      // Provider not found
+                    }
+                  }
+                },
+                icon: const Icon(Icons.delete),
+                label: const Text('마커 삭제'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _showRecordDetails(FishingRecord record) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(AppDimensions.paddingL),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('수량: ${record.count}'),
-            Text('위도: ${record.latitude.toStringAsFixed(6)}'),
-            Text('경도: ${record.longitude.toStringAsFixed(6)}'),
+            // 헤더
+            Row(
+              children: [
+                Icon(
+                  Icons.anchor,
+                  color: AppColors.primaryBlue,
+                  size: 28,
+                ),
+                const SizedBox(width: AppDimensions.paddingM),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.species,
+                        style: AppTextStyles.headlineMedium.copyWith(
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                      Text(
+                        DateFormatter.formatDateTime(record.timestamp),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppDimensions.paddingL),
+            
+            // 상세 정보
+            _buildDetailRow(Icons.format_list_numbered, '수량', '${record.count}마리'),
+            _buildDetailRow(Icons.location_on, '위치', record.location),
+            if (record.accuracy != null)
+              _buildDetailRow(Icons.gps_fixed, '정확도', '±${record.accuracy!.toStringAsFixed(1)}m'),
             if (record.notes != null && record.notes!.isNotEmpty)
-              Text('메모: ${record.notes}'),
-            const SizedBox(height: AppDimensions.paddingM),
-            Text(
-              '기록 시간: ${record.timestamp.toString().substring(0, 19)}',
-              style: Theme.of(context).textTheme.bodySmall,
+              _buildDetailRow(Icons.note, '메모', record.notes!),
+            if (record.photoPath != null)
+              _buildDetailRow(Icons.camera_alt, '사진', '첨부됨'),
+            if (record.audioPath != null)
+              _buildDetailRow(Icons.mic, '음성', '녹음 첨부됨'),
+            
+            const SizedBox(height: AppDimensions.paddingL),
+            
+            // 액션 버튼
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _openInExternalMap(record.latitude, record.longitude);
+                    },
+                    icon: const Icon(Icons.map),
+                    label: const Text('외부 지도'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryBlue,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppDimensions.paddingM),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.check),
+                    label: const Text('확인'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('닫기'),
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingS),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.textSecondary),
+          const SizedBox(width: AppDimensions.paddingM),
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _openInExternalMap(record.latitude, record.longitude);
-            },
-            child: const Text('외부 지도에서 열기'),
+          Expanded(
+            child: Text(
+              value,
+              style: AppTextStyles.bodyMedium,
+            ),
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/fishing_record.dart';
 import '../services/location_service.dart';
 import '../services/database_service.dart';
+import '../services/storage_service.dart';
 import '../services/camera_service_v2.dart';
 import '../core/errors/app_exception.dart';
 import '../core/utils/result.dart';
@@ -93,7 +94,7 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
-      _records = await DatabaseService.getRecords(
+      _records = await StorageService.getRecords(
         startDate: startDate,
         endDate: endDate,
       );
@@ -111,7 +112,7 @@ class AppStateProvider extends ChangeNotifier {
   /// 새 기록 추가
   Future<Result<int>> addRecord(FishingRecord record) async {
     try {
-      final id = await DatabaseService.insertRecord(record);
+      final id = await StorageService.addRecord(record);
       
       // 리스트 업데이트
       await loadRecords();
@@ -127,7 +128,7 @@ class AppStateProvider extends ChangeNotifier {
   /// 기록 삭제
   Future<Result<void>> deleteRecord(int id) async {
     try {
-      await DatabaseService.deleteRecord(id);
+      await StorageService.deleteRecord(id);
       
       // 리스트 업데이트
       await loadRecords();

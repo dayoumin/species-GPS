@@ -106,6 +106,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         );
       }
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('저장 실패: $e')),
       );

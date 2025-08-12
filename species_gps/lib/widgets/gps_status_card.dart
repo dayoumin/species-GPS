@@ -10,12 +10,14 @@ class GpsStatusCard extends StatelessWidget {
   final Position? position;
   final GpsStatus status;
   final VoidCallback? onRefresh;
+  final VoidCallback? onMapTap;
 
   const GpsStatusCard({
     super.key,
     this.position,
     this.status = GpsStatus.inactive,
     this.onRefresh,
+    this.onMapTap,
   });
 
   @override
@@ -43,46 +45,63 @@ class GpsStatusCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onRefresh,
+          onTap: null,  // 전체 카드 클릭 비활성화
           borderRadius: BorderRadius.circular(AppDimensions.radiusL),
           child: Padding(
             padding: const EdgeInsets.all(AppDimensions.paddingL),
             child: Row(
               children: [
-                // GPS Icon with status
-                Container(
-                  width: AppDimensions.iconXXL,
-                  height: AppDimensions.iconXXL,
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: AppColors.white,
-                        size: AppDimensions.iconL,
+                // GPS 상태 표시 아이콘
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: AppDimensions.iconXXL,
+                      height: AppDimensions.iconXXL,
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.white,
-                              width: 2,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            status == GpsStatus.active 
+                                ? Icons.gps_fixed
+                                : status == GpsStatus.searching
+                                    ? Icons.gps_not_fixed
+                                    : Icons.gps_off,
+                            color: AppColors.white,
+                            size: AppDimensions.iconL,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.white,
+                                  width: 2,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'GPS',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.white.withValues(alpha: 0.8),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(width: AppDimensions.paddingL),
                 
@@ -130,9 +149,8 @@ class GpsStatusCard extends StatelessWidget {
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (position!.accuracy != null)
-                          Text(
-                            '정확도: ±${position!.accuracy.toStringAsFixed(1)}m',
+                        Text(
+                          '정확도: ±${position!.accuracy.toStringAsFixed(1)}m',
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.white.withOpacity(0.8),
                               fontSize: 11,
@@ -152,16 +170,67 @@ class GpsStatusCard extends StatelessWidget {
                   ),
                 ),
                 
-                // Refresh button
-                if (onRefresh != null)
-                  IconButton(
-                    onPressed: onRefresh,
-                    icon: const Icon(
-                      Icons.refresh,
-                      color: AppColors.white,
-                    ),
-                    tooltip: '위치 새로고침',
-                  ),
+                // Map & Refresh buttons
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Map button - 클릭 가능
+                    if (onMapTap != null)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: onMapTap,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.map,
+                                  color: AppColors.white,
+                                  size: 28,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '지도',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.white,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (onRefresh != null) ...[
+                      const SizedBox(height: 8),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: onRefresh,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.refresh,
+                              color: AppColors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),

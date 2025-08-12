@@ -283,7 +283,7 @@ class RecordRepository implements IRecordRepository {
       
       final filteredRecords = allRecords.where((record) {
         final searchLower = query.toLowerCase();
-        return (record.species?.toLowerCase().contains(searchLower) ?? false) ||
+        return record.species.toLowerCase().contains(searchLower) ||
                (record.notes?.toLowerCase().contains(searchLower) ?? false) ||
                (record.location?.toLowerCase().contains(searchLower) ?? false);
       }).toList();

@@ -11,6 +11,7 @@ import '../core/theme/app_text_styles.dart';
 import '../core/utils/ui_helpers.dart';
 import '../core/utils/date_formatter.dart';
 import '../core/utils/app_logger.dart';
+import 'map_screen.dart';
 
 /// 개선된 기록 추가 화면 - 음성 입력 기능 포함
 class AddRecordScreenV3 extends StatefulWidget {
@@ -32,7 +33,6 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
   String? _audioPath;
   bool _isListening = false;
   bool _isRecording = false;
-  bool _showMap = false;
   
   @override
   void initState() {
@@ -70,15 +70,18 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
         actions: [
-          // 지도 토글 버튼
+          // 지도 화면으로 이동
           IconButton(
             onPressed: () {
-              setState(() {
-                _showMap = !_showMap;
-              });
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MapScreen(),
+                ),
+              );
             },
-            icon: Icon(_showMap ? Icons.list : Icons.map),
-            tooltip: _showMap ? '입력 폼 보기' : '지도 보기',
+            icon: const Icon(Icons.map),
+            tooltip: '지도 보기',
           ),
         ],
       ),
@@ -110,112 +113,11 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
             );
           }
           
-          return _showMap ? _buildMapView(provider) : _buildFormView(provider);
+          return _buildFormView(provider);
         },
       ),
     );
   }
-  
-  Widget _buildMapView(AppStateProvider provider) {
-    return Stack(
-      children: [
-        // 지도
-        MapWidget(
-          currentPosition: provider.currentPosition,
-          showCurrentLocation: true,
-          showRecords: false,
-          initialZoom: 15.0,
-        ),
-        
-        // 하단 정보 패널
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(AppDimensions.radiusL),
-                topRight: Radius.circular(AppDimensions.radiusL),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(AppDimensions.paddingL),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 위치 정보
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on,
-                      color: AppColors.info,
-                    ),
-                    const SizedBox(width: AppDimensions.paddingM),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '현재 위치',
-                            style: AppTextStyles.labelMedium,
-                          ),
-                          Text(
-                            '위도: ${provider.currentPosition!.latitude.toStringAsFixed(6)}',
-                            style: AppTextStyles.bodySmall,
-                          ),
-                          Text(
-                            '경도: ${provider.currentPosition!.longitude.toStringAsFixed(6)}',
-                            style: AppTextStyles.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (provider.currentPosition!.accuracy != null)
-                      Chip(
-                        label: Text(
-                          '±${provider.currentPosition!.accuracy.toStringAsFixed(0)}m',
-                        ),
-                        backgroundColor: AppColors.success.withOpacity(0.1),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: AppDimensions.paddingL),
-                
-                // 기록 추가 버튼
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _showMap = false;
-                      });
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('이 위치에서 기록 추가'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppDimensions.paddingM,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-  
   Widget _buildFormView(AppStateProvider provider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppDimensions.paddingL),
@@ -316,9 +218,12 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
       ),
       child: InkWell(
         onTap: () {
-          setState(() {
-            _showMap = true;
-          });
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MapScreen(),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(AppDimensions.radiusM),
         child: Padding(
@@ -328,7 +233,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
               Container(
                 padding: const EdgeInsets.all(AppDimensions.paddingS),
                 decoration: BoxDecoration(
-                  color: AppColors.info.withOpacity(0.1),
+                  color: AppColors.info.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppDimensions.radiusS),
                 ),
                 child: const Icon(
@@ -371,34 +276,59 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextFormField(
-          controller: _speciesController,
-          decoration: InputDecoration(
-            labelText: '종 이름',
-            prefixIcon: const Icon(Icons.phishing),
-            suffixIcon: IconButton(
-              onPressed: _toggleSpeechToText,
-              icon: Icon(
-                _isListening ? Icons.mic : Icons.mic_none,
-                color: _isListening ? AppColors.error : null,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _speciesController,
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(
+                  labelText: '종 이름',
+                  labelStyle: const TextStyle(fontSize: 16),
+                  prefixIcon: const Icon(Icons.phishing, size: 28),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.paddingL,
+                    vertical: AppDimensions.paddingL,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '종 이름을 입력해주세요';
+                  }
+                  return null;
+                },
               ),
-              tooltip: '음성으로 입력',
             ),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '종 이름을 입력해주세요';
-            }
-            return null;
-          },
+            const SizedBox(width: AppDimensions.paddingM),
+            // 음성 입력 버튼 - 통일된 디자인
+            _buildVoiceInputButton(
+              onTap: _toggleSpeechToText,
+              isListening: _isListening,
+            ),
+          ],
         ),
         if (_isListening)
           Padding(
-            padding: const EdgeInsets.only(top: AppDimensions.paddingS),
-            child: Text(
-              '음성 인식 중... 말씀해주세요',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.error,
+            padding: const EdgeInsets.only(top: AppDimensions.paddingM),
+            child: Container(
+              padding: const EdgeInsets.all(AppDimensions.paddingM),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.mic, color: AppColors.error, size: 20),
+                  const SizedBox(width: AppDimensions.paddingS),
+                  Text(
+                    '음성 인식 중... 말씀해주세요',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -410,21 +340,32 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextFormField(
-          controller: _notesController,
-          decoration: InputDecoration(
-            labelText: '메모 (선택)',
-            prefixIcon: const Icon(Icons.note),
-            suffixIcon: IconButton(
-              onPressed: _toggleNoteSpeechToText,
-              icon: Icon(
-                _isListening ? Icons.mic : Icons.mic_none,
-                color: _isListening ? AppColors.error : null,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _notesController,
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(
+                  labelText: '메모 (선택)',
+                  labelStyle: const TextStyle(fontSize: 16),
+                  prefixIcon: const Icon(Icons.note, size: 28),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.paddingL,
+                    vertical: AppDimensions.paddingL,
+                  ),
+                ),
+                maxLines: 3,
               ),
-              tooltip: '음성으로 입력',
             ),
-          ),
-          maxLines: 3,
+            const SizedBox(width: AppDimensions.paddingM),
+            // 음성 입력 버튼 - 통일된 디자인
+            _buildVoiceInputButton(
+              onTap: _toggleNoteSpeechToText,
+              isListening: _isListening,
+            ),
+          ],
         ),
       ],
     );
@@ -470,12 +411,48 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
             ],
           )
         else
-          OutlinedButton.icon(
-            onPressed: () => _takePicture(provider),
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('사진 촬영'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.oceanGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryBlue.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _takePicture(provider),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.paddingXL,
+                    vertical: AppDimensions.paddingL,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.camera_alt,
+                        color: AppColors.white,
+                        size: 32,
+                      ),
+                      const SizedBox(width: AppDimensions.paddingM),
+                      Text(
+                        '사진 촬영',
+                        style: AppTextStyles.buttonLarge.copyWith(
+                          color: AppColors.white,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
       ],
@@ -508,17 +485,48 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
             ),
           )
         else
-          OutlinedButton.icon(
-            onPressed: _toggleAudioRecording,
-            icon: Icon(
-              _isRecording ? Icons.stop : Icons.mic,
-              color: _isRecording ? AppColors.error : null,
+          Container(
+            decoration: BoxDecoration(
+              color: _isRecording ? AppColors.error : AppColors.secondaryGreen,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: (_isRecording ? AppColors.error : AppColors.secondaryGreen)
+                      .withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            label: Text(_isRecording ? '녹음 중지' : '음성 녹음'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
-              side: BorderSide(
-                color: _isRecording ? AppColors.error : AppColors.primaryBlue,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _toggleAudioRecording,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.paddingXL,
+                    vertical: AppDimensions.paddingL,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isRecording ? Icons.stop : Icons.mic,
+                        color: AppColors.white,
+                        size: 32,
+                      ),
+                      const SizedBox(width: AppDimensions.paddingM),
+                      Text(
+                        _isRecording ? '녹음 중지' : '음성 녹음 시작',
+                        style: AppTextStyles.buttonLarge.copyWith(
+                          color: AppColors.white,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -531,6 +539,41 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
             ),
           ),
       ],
+    );
+  }
+  
+  /// 공통 음성 입력 버튼 위젯
+  Widget _buildVoiceInputButton({
+    required VoidCallback onTap,
+    required bool isListening,
+  }) {
+    return Container(
+      height: 56, // TextFormField와 동일한 높이
+      width: 56,  // 정사각형 버튼
+      decoration: BoxDecoration(
+        color: isListening ? AppColors.error : AppColors.primaryBlue,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: (isListening ? AppColors.error : AppColors.primaryBlue)
+                .withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Icon(
+            isListening ? Icons.mic : Icons.mic_none,
+            color: AppColors.white,
+            size: 28,
+          ),
+        ),
+      ),
     );
   }
   
@@ -568,7 +611,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         if (mounted) {
           UIHelpers.showSnackBar(
             context,
-            '음성 인식을 시작할 수 없습니다',
+            message: '음성 인식을 시작할 수 없습니다',
             type: SnackBarType.error,
           );
         }
@@ -610,7 +653,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         if (mounted) {
           UIHelpers.showSnackBar(
             context,
-            '음성 인식을 시작할 수 없습니다',
+            message: '음성 인식을 시작할 수 없습니다',
             type: SnackBarType.error,
           );
         }
@@ -629,7 +672,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         if (mounted) {
           UIHelpers.showSnackBar(
             context,
-            '음성 녹음이 완료되었습니다',
+            message: '음성 녹음이 완료되었습니다',
             type: SnackBarType.success,
           );
         }
@@ -640,7 +683,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         if (mounted) {
           UIHelpers.showSnackBar(
             context,
-            '녹음 중지 실패',
+            message: '녹음 중지 실패',
             type: SnackBarType.error,
           );
         }
@@ -655,7 +698,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         if (mounted) {
           UIHelpers.showSnackBar(
             context,
-            '녹음을 시작할 수 없습니다',
+            message: '녹음을 시작할 수 없습니다',
             type: SnackBarType.error,
           );
         }
@@ -673,7 +716,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
       if (mounted) {
         UIHelpers.showSnackBar(
           context,
-          '사진 촬영 실패',
+          message: '사진 촬영 실패',
           type: SnackBarType.error,
         );
       }
@@ -703,16 +746,16 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
       if (mounted) {
         UIHelpers.showSnackBar(
           context,
-          '기록이 저장되었습니다',
+          message: '기록이 저장되었습니다',
           type: SnackBarType.success,
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);  // 성공 시 true 반환
       }
     } else {
       if (mounted) {
         UIHelpers.showSnackBar(
           context,
-          '기록 저장 실패',
+          message: '기록 저장 실패',
           type: SnackBarType.error,
         );
       }

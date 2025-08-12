@@ -6,6 +6,8 @@ sealed class Result<T> {
   bool get isSuccess => this is Success<T>;
   bool get isFailure => this is Failure<T>;
 
+  T? get data => dataOrNull;
+  
   T? get dataOrNull => switch (this) {
         Success(:final data) => data,
         Failure() => null,

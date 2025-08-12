@@ -73,7 +73,7 @@ class FileHelpers {
         'longitude': position.longitude,
         'accuracy': position.accuracy,
         'altitude': position.altitude,
-        'timestamp': position.timestamp?.toIso8601String(),
+        'timestamp': position.timestamp.toIso8601String(),
       };
       
       final metadataFile = File(metadataPath);

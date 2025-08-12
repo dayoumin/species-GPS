@@ -5,6 +5,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
 import 'core/utils/app_logger.dart';
 import 'providers/app_state_provider.dart';
+import 'providers/map_state_provider.dart';
 import 'screens/home_screen_v2.dart';
 
 void main() async {
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppStateProvider()),
+        ChangeNotifierProvider(create: (_) => MapStateProvider()),
       ],
       child: MaterialApp(
         title: '수산생명자원 GPS',
@@ -140,7 +142,7 @@ class _SplashScreenState extends State<SplashScreen>
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          color: AppColors.white.withOpacity(0.2),
+                          color: AppColors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -164,7 +166,7 @@ class _SplashScreenState extends State<SplashScreen>
                         '해양 생물 자원 기록 시스템',
                         style: TextStyle(
                           fontSize: 16,
-                          color: AppColors.white.withOpacity(0.8),
+                          color: AppColors.white.withValues(alpha: 0.8),
                         ),
                       ),
                     ],

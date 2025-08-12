@@ -23,6 +23,9 @@ class FishingRecord {
     required this.timestamp,
   });
 
+  // Getter for location string representation
+  String get location => '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
