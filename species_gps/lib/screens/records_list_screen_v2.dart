@@ -30,6 +30,10 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   DateTime? _selectedDate;
   String _selectedPeriod = '전체'; // 전체, 주간, 월별, 분기, 년도
   String _searchQuery = '';
+  DateTime? _startDate;
+  DateTime? _endDate;
+  String _speciesSearchQuery = '';
+  final TextEditingController _speciesSearchController = TextEditingController();
 
   @override
   void initState() {
@@ -41,6 +45,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _speciesSearchController.dispose();
     super.dispose();
   }
 
@@ -52,13 +57,37 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   }
 
   List<FishingRecord> _applySearch(List<FishingRecord> records) {
-    if (_searchQuery.isEmpty) return records;
+    var filteredRecords = records;
     
-    return records.where((record) {
-      return record.species.toLowerCase().contains(_searchQuery) ||
-             (record.notes?.toLowerCase().contains(_searchQuery) ?? false) ||
-             _dateFormat.format(record.timestamp).contains(_searchQuery);
-    }).toList();
+    // 텍스트 검색 적용
+    if (_searchQuery.isNotEmpty) {
+      filteredRecords = filteredRecords.where((record) {
+        return record.species.toLowerCase().contains(_searchQuery) ||
+               (record.notes?.toLowerCase().contains(_searchQuery) ?? false) ||
+               _dateFormat.format(record.timestamp).contains(_searchQuery);
+      }).toList();
+    }
+    
+    // 날짜 범위 필터 적용
+    if (_startDate != null) {
+      filteredRecords = filteredRecords.where((record) {
+        return record.timestamp.isAfter(
+          DateTime(_startDate!.year, _startDate!.month, _startDate!.day),
+        ) || record.timestamp.isAtSameMomentAs(
+          DateTime(_startDate!.year, _startDate!.month, _startDate!.day),
+        );
+      }).toList();
+    }
+    
+    if (_endDate != null) {
+      filteredRecords = filteredRecords.where((record) {
+        return record.timestamp.isBefore(
+          DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59),
+        );
+      }).toList();
+    }
+    
+    return filteredRecords;
   }
 
 
@@ -570,88 +599,140 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
           
           const SizedBox(height: AppDimensions.paddingM),
           
-          // 어종 선택 섹션
-          _buildSpeciesFilter(),
+          // 날짜 범위 선택 섹션
+          _buildDateRangeFilter(),
         ],
       ),
     );
   }
 
-  Widget _buildSpeciesFilter() {
-    return Consumer<AppStateProvider>(
-      builder: (context, provider, child) {
-        final availableSpecies = provider.speciesCount.keys.toList()..sort();
-        
-        return Row(
-          children: [
-            Icon(
-              Icons.pets,
-              color: AppColors.primaryBlue,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              '어종:',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    // 전체 선택 칩
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: const Text('전체'),
-                        selected: _selectedSpecies == null,
-                        onSelected: (selected) {
-                          setState(() {
-                            _selectedSpecies = selected ? null : _selectedSpecies;
-                          });
-                        },
-                        selectedColor: AppColors.primaryBlue,
-                        labelStyle: TextStyle(
-                          color: _selectedSpecies == null ? Colors.white : AppColors.textPrimary,
-                          fontWeight: _selectedSpecies == null ? FontWeight.bold : FontWeight.normal,
-                        ),
+  Widget _buildDateRangeFilter() {
+    return Row(
+      children: [
+        Icon(
+          Icons.calendar_today,
+          color: AppColors.primaryBlue,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          '날짜:',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Row(
+            children: [
+              // 시작일
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _selectStartDate(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _startDate != null
+                          ? DateFormat('MM/dd').format(_startDate!)
+                          : '시작일',
+                      style: TextStyle(
+                        color: _startDate != null 
+                            ? AppColors.textPrimary 
+                            : AppColors.textHint,
+                        fontSize: 13,
                       ),
                     ),
-                    // 어종별 칩들
-                    ...availableSpecies.map((species) {
-                      final isSelected = _selectedSpecies == species;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(species),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedSpecies = selected ? species : null;
-                            });
-                          },
-                          selectedColor: AppColors.primaryBlue,
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
+              const SizedBox(width: 8),
+              const Text('~', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              // 종료일
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _selectEndDate(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _endDate != null
+                          ? DateFormat('MM/dd').format(_endDate!)
+                          : '종료일',
+                      style: TextStyle(
+                        color: _endDate != null 
+                            ? AppColors.textPrimary 
+                            : AppColors.textHint,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // 초기화 버튼
+              if (_startDate != null || _endDate != null)
+                IconButton(
+                  icon: Icon(
+                    Icons.clear,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _startDate = null;
+                      _endDate = null;
+                    });
+                  },
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
+
+  Future<void> _selectStartDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: _endDate ?? DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectEndDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate ?? DateTime.now(),
+      firstDate: _startDate ?? DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _endDate = picked;
+      });
+    }
+  }
+
 
   Widget _buildListContent(List<FishingRecord> records) {
     if (records.isEmpty) {
@@ -771,6 +852,13 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   }
 
   Widget _buildStatisticsFilterSection(AppStateProvider provider) {
+    // records에서 직접 어종 목록 추출
+    final availableSpecies = provider.records
+        .map((record) => record.species)
+        .toSet()
+        .toList()
+      ..sort();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppDimensions.paddingM),
@@ -835,76 +923,203 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
           
           const SizedBox(height: AppDimensions.paddingM),
           
-          // 어종 선택 (통계용)
-          Row(
-            children: [
-              Icon(
-                Icons.pets,
-                color: AppColors.primaryBlue,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                '어종:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      // 전체 선택 칩
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: const Text('전체'),
-                          selected: _selectedSpecies == null,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedSpecies = selected ? null : _selectedSpecies;
-                            });
-                          },
-                          selectedColor: AppColors.primaryBlue,
-                          labelStyle: TextStyle(
-                            color: _selectedSpecies == null ? Colors.white : AppColors.textPrimary,
-                            fontWeight: _selectedSpecies == null ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                      // 어종별 칩들
-                      ...(provider.speciesCount.keys.toList()..sort()).map((species) {
-                        final isSelected = _selectedSpecies == species;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(species),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedSpecies = selected ? species : null;
-                              });
-                            },
-                            selectedColor: AppColors.primaryBlue,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : AppColors.textPrimary,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          // 어종 검색 (통계용)
+          _buildSpeciesSearchDropdown(availableSpecies),
         ],
       ),
+    );
+  }
+
+  Widget _buildSpeciesSearchDropdown(List<String> availableSpecies) {
+    return Row(
+      children: [
+        Icon(
+          Icons.pets,
+          color: AppColors.primaryBlue,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          '어종:',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: RawAutocomplete<String>(
+            textEditingController: _speciesSearchController,
+            focusNode: FocusNode(),
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              if (textEditingValue.text.isEmpty) {
+                return ['전체 어종', ...availableSpecies];
+              }
+              
+              // 검색어로 필터링
+              final searchLower = textEditingValue.text.toLowerCase();
+              final filtered = availableSpecies.where((species) {
+                return species.toLowerCase().contains(searchLower);
+              }).toList();
+              
+              // 전체 옵션도 검색 가능하게
+              if ('전체'.contains(searchLower) || '전체 어종'.contains(searchLower)) {
+                return ['전체 어종', ...filtered];
+              }
+              
+              return filtered;
+            },
+            onSelected: (String selection) {
+              setState(() {
+                if (selection == '전체 어종') {
+                  _selectedSpecies = null;
+                  _speciesSearchController.clear();
+                } else {
+                  _selectedSpecies = selection;
+                  _speciesSearchController.text = selection;
+                }
+              });
+            },
+            fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+              return TextField(
+                controller: textEditingController,
+                focusNode: focusNode,
+                decoration: InputDecoration(
+                  hintText: '어종 검색/선택... (입력 후 엔터 또는 목록에서 선택)',
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.primaryBlue,
+                    size: 20,
+                  ),
+                  suffixIcon: textEditingController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.clear,
+                            color: AppColors.textSecondary,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _selectedSpecies = null;
+                              _speciesSearchController.clear();
+                            });
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.primaryBlue, width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
+                onSubmitted: (value) {
+                  // 엔터키를 눌렀을 때 처리
+                  if (value.isNotEmpty) {
+                    // 정확히 일치하는 어종이 있는지 확인
+                    final exactMatch = availableSpecies.firstWhere(
+                      (species) => species.toLowerCase() == value.toLowerCase(),
+                      orElse: () => '',
+                    );
+                    
+                    if (exactMatch.isNotEmpty) {
+                      // 정확히 일치하는 어종이 있으면 선택
+                      setState(() {
+                        _selectedSpecies = exactMatch;
+                        _speciesSearchController.text = exactMatch;
+                      });
+                    } else {
+                      // 부분 일치하는 첫 번째 어종 선택
+                      final searchLower = value.toLowerCase();
+                      final partialMatch = availableSpecies.firstWhere(
+                        (species) => species.toLowerCase().contains(searchLower),
+                        orElse: () => '',
+                      );
+                      
+                      if (partialMatch.isNotEmpty) {
+                        setState(() {
+                          _selectedSpecies = partialMatch;
+                          _speciesSearchController.text = partialMatch;
+                        });
+                      }
+                    }
+                  } else if (value.isEmpty) {
+                    // 빈 값으로 엔터를 치면 전체 선택
+                    setState(() {
+                      _selectedSpecies = null;
+                      _speciesSearchController.clear();
+                    });
+                  }
+                },
+                onChanged: (value) {
+                  // 입력중일 때 실시간으로 필터링을 위해 상태 업데이트
+                  setState(() {
+                    if (value.isEmpty) {
+                      _selectedSpecies = null;
+                    }
+                  });
+                },
+              );
+            },
+            optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4.0,
+                  child: Container(
+                    constraints: BoxConstraints(maxHeight: 300),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      itemCount: options.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final option = options.elementAt(index);
+                        final isAll = option == '전체 어종';
+                        return ListTile(
+                          dense: true,
+                          leading: Icon(
+                            isAll ? Icons.all_inclusive : Icons.pets,
+                            size: 20,
+                            color: isAll ? AppColors.primaryBlue : AppColors.textSecondary,
+                          ),
+                          title: Text(
+                            option,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isAll ? FontWeight.bold : FontWeight.normal,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          onTap: () {
+                            onSelected(option);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
