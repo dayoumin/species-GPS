@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../providers/app_state_provider.dart';
+import '../providers/map_state_provider.dart';
 import '../models/fishing_record.dart';
 import '../services/audio_service.dart';
 import '../widgets/map_widget.dart';
@@ -31,7 +32,8 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
   
   String? _photoPath;
   String? _audioPath;
-  bool _isListening = false;
+  bool _isListeningSpecies = false;  // 종 이름 음성 인식 상태
+  bool _isListeningNotes = false;    // 메모 음성 인식 상태
   bool _isRecording = false;
   
   @override
@@ -130,7 +132,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
             _buildLocationCard(provider),
             const SizedBox(height: AppDimensions.paddingL),
             
-            // 종 정보 입력 (음성 입력 가능)
+            // 종 정보 입력 (실시간 음성→텍스트 변환)
             _buildSpeciesInput(),
             const SizedBox(height: AppDimensions.paddingL),
             
@@ -175,32 +177,50 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
             ),
             const SizedBox(height: AppDimensions.paddingL),
             
-            // 메모 입력 (음성 입력 가능)
+            // 메모 입력 (실시간 음성→텍스트 변환)
             _buildNotesInput(),
             const SizedBox(height: AppDimensions.paddingL),
             
-            // 사진 촬영
+            // 사진 촬영 (GPS 메타데이터 포함)
             _buildPhotoSection(provider),
             const SizedBox(height: AppDimensions.paddingL),
             
-            // 음성 녹음
+            // 음성 파일 녹음 (별도 파일로 저장)
             _buildAudioSection(),
             const SizedBox(height: AppDimensions.paddingXL),
             
-            // 저장 버튼
-            SizedBox(
+            // 전체 기록 저장 (위의 모든 데이터를 하나의 기록으로 저장)
+            Container(
               width: double.infinity,
+              height: 56,
               child: ElevatedButton(
                 onPressed: () => _saveRecord(provider),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppDimensions.paddingL,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  '기록 저장',
-                  style: TextStyle(fontSize: 18),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.save,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      '기록 저장',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -304,11 +324,11 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
             // 음성 입력 버튼 - 통일된 디자인
             _buildVoiceInputButton(
               onTap: _toggleSpeechToText,
-              isListening: _isListening,
+              isListening: _isListeningSpecies,
             ),
           ],
         ),
-        if (_isListening)
+        if (_isListeningSpecies)
           Padding(
             padding: const EdgeInsets.only(top: AppDimensions.paddingM),
             child: Container(
@@ -356,17 +376,41 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
                     vertical: AppDimensions.paddingL,
                   ),
                 ),
-                maxLines: 3,
+                maxLines: 1,
               ),
             ),
             const SizedBox(width: AppDimensions.paddingM),
             // 음성 입력 버튼 - 통일된 디자인
             _buildVoiceInputButton(
               onTap: _toggleNoteSpeechToText,
-              isListening: _isListening,
+              isListening: _isListeningNotes,
             ),
           ],
         ),
+        if (_isListeningNotes)
+          Padding(
+            padding: const EdgeInsets.only(top: AppDimensions.paddingM),
+            child: Container(
+              padding: const EdgeInsets.all(AppDimensions.paddingM),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.mic, color: AppColors.error, size: 20),
+                  const SizedBox(width: AppDimensions.paddingS),
+                  Text(
+                    '메모 음성 인식 중... 말씀해주세요',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -464,7 +508,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '음성 메모',
+          '음성 파일 녹음',
           style: AppTextStyles.labelLarge,
         ),
         const SizedBox(height: AppDimensions.paddingS),
@@ -518,7 +562,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
                       ),
                       const SizedBox(width: AppDimensions.paddingM),
                       Text(
-                        _isRecording ? '녹음 중지' : '음성 녹음 시작',
+                        _isRecording ? '파일 녹음 중지' : '음성 파일 녹음',
                         style: AppTextStyles.buttonLarge.copyWith(
                           color: AppColors.white,
                           fontSize: 18,
@@ -578,17 +622,25 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
   }
   
   Future<void> _toggleSpeechToText() async {
-    if (_isListening) {
+    // 메모 음성 인식이 작동 중이면 중지
+    if (_isListeningNotes) {
+      await _audioService.stopListening();
+      setState(() {
+        _isListeningNotes = false;
+      });
+    }
+    
+    if (_isListeningSpecies) {
       final result = await _audioService.stopListening();
       if (result.isSuccess && result.data!.isNotEmpty) {
         _speciesController.text = result.data!;
       }
       setState(() {
-        _isListening = false;
+        _isListeningSpecies = false;
       });
     } else {
       setState(() {
-        _isListening = true;
+        _isListeningSpecies = true;
       });
       
       final result = await _audioService.startListening(
@@ -599,14 +651,14 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         },
         onFinalResult: (finalText) {
           setState(() {
-            _isListening = false;
+            _isListeningSpecies = false;
           });
         },
       );
       
       if (result.isFailure) {
         setState(() {
-          _isListening = false;
+          _isListeningSpecies = false;
         });
         if (mounted) {
           UIHelpers.showSnackBar(
@@ -620,17 +672,25 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
   }
   
   Future<void> _toggleNoteSpeechToText() async {
-    if (_isListening) {
+    // 종 이름 음성 인식이 작동 중이면 중지
+    if (_isListeningSpecies) {
+      await _audioService.stopListening();
+      setState(() {
+        _isListeningSpecies = false;
+      });
+    }
+    
+    if (_isListeningNotes) {
       final result = await _audioService.stopListening();
       if (result.isSuccess && result.data!.isNotEmpty) {
         _notesController.text = result.data!;
       }
       setState(() {
-        _isListening = false;
+        _isListeningNotes = false;
       });
     } else {
       setState(() {
-        _isListening = true;
+        _isListeningNotes = true;
       });
       
       final result = await _audioService.startListening(
@@ -641,14 +701,14 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
         },
         onFinalResult: (finalText) {
           setState(() {
-            _isListening = false;
+            _isListeningNotes = false;
           });
         },
       );
       
       if (result.isFailure) {
         setState(() {
-          _isListening = false;
+          _isListeningNotes = false;
         });
         if (mounted) {
           UIHelpers.showSnackBar(
@@ -743,10 +803,18 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
     final result = await provider.addRecord(record);
     
     if (result.isSuccess) {
+      // 기록 저장 성공시 지도에 마커도 추가
+      final mapProvider = context.read<MapStateProvider>();
+      mapProvider.addMarker(
+        lat: record.latitude,
+        lng: record.longitude,
+        memo: '${record.species} ${record.count}마리',
+      );
+      
       if (mounted) {
         UIHelpers.showSnackBar(
           context,
-          message: '기록이 저장되었습니다',
+          message: '기록과 지도 마커가 저장되었습니다',
           type: SnackBarType.success,
         );
         Navigator.pop(context, true);  // 성공 시 true 반환

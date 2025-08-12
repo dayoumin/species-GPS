@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -79,6 +81,94 @@ class ExportService {
       return Result.failure(
         StorageException(
           message: 'CSV 내보내기에 실패했습니다.',
+          originalError: e,
+        ),
+      );
+    }
+  }
+  
+  /// XLSX로 내보내기
+  static Future<Result<File>> exportToXLSX(
+    List<FishingRecord> records, {
+    String? fileName,
+  }) async {
+    try {
+      // Excel 워크북 생성
+      var excel = Excel.createExcel();
+      var sheet = excel['기록'];
+      
+      // 헤더 추가
+      sheet.appendRow([
+        TextCellValue('번호'),
+        TextCellValue('어종'),
+        TextCellValue('수량'),
+        TextCellValue('위도'),
+        TextCellValue('경도'),
+        TextCellValue('정확도(m)'),
+        TextCellValue('기록시간'),
+        TextCellValue('메모'),
+        TextCellValue('사진'),
+        TextCellValue('음성'),
+      ]);
+      
+      // 헤더 스타일링
+      for (int col = 0; col < 10; col++) {
+        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0));
+        cell.cellStyle = CellStyle(
+          bold: true,
+          backgroundColorHex: ExcelColor.blue100,
+          horizontalAlign: HorizontalAlign.Center,
+        );
+      }
+      
+      // 데이터 추가
+      for (int i = 0; i < records.length; i++) {
+        final record = records[i];
+        sheet.appendRow([
+          IntCellValue(i + 1),
+          TextCellValue(record.species),
+          IntCellValue(record.count),
+          DoubleCellValue(record.latitude),
+          DoubleCellValue(record.longitude),
+          DoubleCellValue(record.accuracy ?? 0),
+          TextCellValue(_dateFormat.format(record.timestamp)),
+          TextCellValue(record.notes ?? ''),
+          TextCellValue(record.photoPath != null ? '있음' : '없음'),
+          TextCellValue(record.audioPath != null ? '있음' : '없음'),
+        ]);
+      }
+      
+      // 열 너비 자동 조정
+      for (int col = 0; col < 10; col++) {
+        sheet.setColumnAutoFit(col);
+      }
+      
+      // 파일 저장
+      final directory = await getApplicationDocumentsDirectory();
+      final exportDir = Directory(path.join(directory.path, 'exports'));
+      await exportDir.create(recursive: true);
+      
+      final xlsxFileName = fileName ?? 
+          'fishing_records_${_fileDateFormat.format(DateTime.now())}.xlsx';
+      final filePath = path.join(exportDir.path, xlsxFileName);
+      
+      // Excel 파일을 바이트로 변환하여 저장
+      var fileBytes = excel.encode();
+      if (fileBytes != null) {
+        final file = File(filePath);
+        await file.writeAsBytes(fileBytes);
+        return Result.success(file);
+      } else {
+        return Result.failure(
+          StorageException(
+            message: 'XLSX 파일 생성에 실패했습니다.',
+          ),
+        );
+      }
+    } catch (e) {
+      return Result.failure(
+        StorageException(
+          message: 'XLSX 내보내기에 실패했습니다.',
           originalError: e,
         ),
       );

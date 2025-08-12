@@ -18,6 +18,7 @@ import 'records_list_screen_v2.dart';
 import 'map_screen.dart';
 import 'map_screen_debug.dart';
 import 'data_analysis_screen.dart';
+import 'species_trend_screen.dart';
 
 class HomeScreenV2 extends StatefulWidget {
   const HomeScreenV2({super.key});
@@ -498,6 +499,25 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                       context,
                       MaterialPageRoute(
                         builder: (context) => const DataAnalysisScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: AppDimensions.paddingM),
+              // 어종 동향 분석 버튼
+              SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  text: '어종 동향 분석',
+                  icon: Icons.trending_up,
+                  size: ButtonSize.medium,
+                  variant: ButtonVariant.outline,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SpeciesTrendScreen(),
                       ),
                     );
                   },
