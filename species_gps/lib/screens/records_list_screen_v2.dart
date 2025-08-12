@@ -30,7 +30,6 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   DateTime? _selectedDate;
   String _selectedPeriod = '전체'; // 전체, 주간, 월별, 분기, 년도
   String _searchQuery = '';
-  bool _isSearching = false;
 
   @override
   void initState() {
@@ -45,15 +44,6 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
     super.dispose();
   }
 
-  void _toggleSearch() {
-    setState(() {
-      _isSearching = !_isSearching;
-      if (!_isSearching) {
-        _searchController.clear();
-        _searchQuery = '';
-      }
-    });
-  }
 
   void _onSearchChanged(String query) {
     setState(() {
@@ -454,20 +444,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: '어종, 메모, 날짜 검색...',
-                  hintStyle: TextStyle(color: Colors.white70),
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.search, color: Colors.white70),
-                ),
-                autofocus: true,
-              )
-            : const Text('기록 조회'),
+        title: const Text('기록 조회'),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.white,
@@ -493,11 +470,6 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: _toggleSearch,
-            tooltip: _isSearching ? '검색 닫기' : '검색',
-          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
@@ -536,6 +508,94 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   }
 
   Widget _buildListTab(List<FishingRecord> records) {
+    return Column(
+      children: [
+        // 검색 섹션
+        _buildSearchSection(),
+        
+        // 목록 내용
+        Expanded(
+          child: _buildListContent(records),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchSection() {
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.paddingM),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 16,
+        ),
+        decoration: InputDecoration(
+          hintText: '어종, 메모, 날짜 검색...',
+          hintStyle: TextStyle(
+            color: AppColors.textHint,
+            fontSize: 16,
+          ),
+          prefixIcon: Icon(
+            Icons.search,
+            color: AppColors.primaryBlue,
+            size: 24,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.clear,
+                    color: AppColors.textSecondary,
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearchChanged('');
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey[300]!,
+              width: 1,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: AppColors.primaryBlue,
+              width: 2,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey[300]!,
+              width: 1,
+            ),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListContent(List<FishingRecord> records) {
     if (records.isEmpty) {
       return Center(
         child: Column(
@@ -548,12 +608,31 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
             ),
             const SizedBox(height: AppDimensions.paddingM),
             Text(
-              '기록이 없습니다',
+              _searchQuery.isNotEmpty 
+                  ? '검색 결과가 없습니다'
+                  : '기록이 없습니다',
               style: AppTextStyles.headlineMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
-            if (_selectedSpecies != null || _selectedDate != null) ...[
+            if (_searchQuery.isNotEmpty) ...[
+              const SizedBox(height: AppDimensions.paddingS),
+              Text(
+                '"$_searchQuery"에 해당하는 기록을 찾을 수 없습니다',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textHint,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppDimensions.paddingM),
+              TextButton(
+                onPressed: () {
+                  _searchController.clear();
+                  _onSearchChanged('');
+                },
+                child: const Text('검색 초기화'),
+              ),
+            ] else if (_selectedSpecies != null || _selectedDate != null) ...[
               const SizedBox(height: AppDimensions.paddingS),
               TextButton(
                 onPressed: () {
