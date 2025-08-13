@@ -160,6 +160,25 @@ class AppStateProvider extends ChangeNotifier {
     return await _cameraService.takePictureWithGPS(_currentPosition!);
   }
   
+  /// 비디오 녹화 시작
+  Future<Result<void>> startVideoRecording() async {
+    return await _cameraService.startVideoRecording();
+  }
+  
+  /// 비디오 녹화 중지 (GPS 포함)
+  Future<Result<String>> stopVideoRecordingWithGPS() async {
+    if (_currentPosition == null) {
+      return Result.failure(
+        LocationException(message: '위치 정보가 없습니다.'),
+      );
+    }
+    
+    return await _cameraService.stopVideoRecordingWithGPS(_currentPosition!);
+  }
+  
+  /// 비디오 녹화 상태 확인
+  bool get isRecordingVideo => _cameraService.isRecording;
+  
   /// 통계 업데이트
   Future<void> _updateStatistics() async {
     try {
@@ -194,6 +213,12 @@ class AppStateProvider extends ChangeNotifier {
   int get todayRecordCount {
     final today = DateTime.now();
     return getFilteredRecords(date: today).length;
+  }
+  
+  /// 어제의 기록 개수
+  int get yesterdayRecordCount {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    return getFilteredRecords(date: yesterday).length;
   }
   
   @override

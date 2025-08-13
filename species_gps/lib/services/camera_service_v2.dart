@@ -187,6 +187,115 @@ class CameraServiceV2 {
     }
   }
   
+  /// 비디오 녹화 상태
+  bool _isRecording = false;
+  bool get isRecording => _isRecording;
+  
+  /// 비디오 녹화 시작
+  Future<Result<void>> startVideoRecording() async {
+    try {
+      if (!isInitialized) {
+        final initResult = await initialize();
+        if (initResult.isFailure) {
+          return Result.failure(initResult.errorOrNull!);
+        }
+      }
+      
+      if (_isRecording) {
+        return Result.failure(
+          app_errors.CameraException(message: '이미 녹화 중입니다.'),
+        );
+      }
+      
+      // 오디오 포함 여부를 위해 컨트롤러 재초기화
+      if (!_controller!.value.isRecordingVideo) {
+        await _controller!.prepareForVideoRecording();
+      }
+      
+      await _controller!.startVideoRecording();
+      _isRecording = true;
+      
+      return Result.success(null);
+    } catch (e) {
+      _isRecording = false;
+      return Result.failure(
+        app_errors.CameraException(
+          message: '비디오 녹화 시작에 실패했습니다.',
+          originalError: e,
+        ),
+      );
+    }
+  }
+  
+  /// 비디오 녹화 중지 및 GPS 정보와 함께 저장
+  Future<Result<String>> stopVideoRecordingWithGPS(Position position) async {
+    try {
+      if (!_isRecording) {
+        return Result.failure(
+          app_errors.CameraException(message: '녹화 중이 아닙니다.'),
+        );
+      }
+      
+      final video = await _controller!.stopVideoRecording();
+      _isRecording = false;
+      
+      final videoFile = File(video.path);
+      
+      // 비디오 파일 저장 (GPS 정보와 함께)
+      final savedPath = await FileHelpers.saveVideoWithMetadata(
+        video: videoFile,
+        position: position,
+      );
+      
+      // 임시 파일 삭제
+      if (videoFile.path != savedPath) {
+        await videoFile.delete();
+      }
+      
+      return Result.success(savedPath);
+    } catch (e) {
+      _isRecording = false;
+      return Result.failure(
+        app_errors.CameraException(
+          message: '비디오 녹화 중지에 실패했습니다.',
+          originalError: e,
+        ),
+      );
+    }
+  }
+  
+  /// 녹화 시간 제한 설정 (초 단위)
+  Future<Result<String>> recordVideoWithDuration({
+    required Position position,
+    required int maxDurationInSeconds,
+  }) async {
+    try {
+      final startResult = await startVideoRecording();
+      if (startResult.isFailure) {
+        return Result.failure(startResult.errorOrNull!);
+      }
+      
+      // 지정된 시간 후 자동 중지
+      await Future.delayed(Duration(seconds: maxDurationInSeconds));
+      
+      if (_isRecording) {
+        return await stopVideoRecordingWithGPS(position);
+      }
+      
+      return Result.failure(
+        app_errors.CameraException(message: '녹화가 중단되었습니다.'),
+      );
+    } catch (e) {
+      _isRecording = false;
+      return Result.failure(
+        app_errors.CameraException(
+          message: '비디오 녹화에 실패했습니다.',
+          originalError: e,
+        ),
+      );
+    }
+  }
+  
   /// 리소스 정리
   Future<void> dispose() async {
     await _controller?.dispose();

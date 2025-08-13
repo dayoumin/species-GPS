@@ -8,6 +8,7 @@ import '../errors/app_exception.dart';
 
 class FileHelpers {
   static const String _photoDirName = 'species_photos';
+  static const String _videoDirName = 'species_videos';
   static const String _metadataDirName = 'metadata';
   
   /// 안전한 파일명 생성 (GPS 정보 노출하지 않음)
@@ -42,6 +43,18 @@ class FileHelpers {
     }
     
     return metaDir;
+  }
+  
+  /// 비디오 저장 디렉토리 가져오기
+  static Future<Directory> getVideoDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final videoDir = Directory(path.join(appDir.path, _videoDirName));
+    
+    if (!await videoDir.exists()) {
+      await videoDir.create(recursive: true);
+    }
+    
+    return videoDir;
   }
   
   /// 사진과 GPS 메타데이터를 안전하게 저장
@@ -82,6 +95,50 @@ class FileHelpers {
       );
       
       return photoPath;
+    } catch (e) {
+      throw StorageException.saveFailed(e);
+    }
+  }
+  
+  /// 비디오와 GPS 메타데이터를 안전하게 저장
+  static Future<String> saveVideoWithMetadata({
+    required File video,
+    required Position position,
+  }) async {
+    try {
+      // 안전한 파일명 생성
+      final fileName = generateSecureFileName(
+        prefix: 'VID',
+        extension: 'mp4',
+      );
+      
+      // 비디오 저장
+      final videoDir = await getVideoDirectory();
+      final videoPath = path.join(videoDir.path, fileName);
+      await video.copy(videoPath);
+      
+      // GPS 메타데이터를 별도 파일로 저장
+      final metadataDir = await getMetadataDirectory();
+      final metadataPath = path.join(
+        metadataDir.path,
+        '${path.basenameWithoutExtension(fileName)}.json',
+      );
+      
+      final metadata = {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'accuracy': position.accuracy,
+        'altitude': position.altitude,
+        'timestamp': position.timestamp.toIso8601String(),
+        'type': 'video',
+      };
+      
+      final metadataFile = File(metadataPath);
+      await metadataFile.writeAsString(
+        jsonEncode(metadata),
+      );
+      
+      return videoPath;
     } catch (e) {
       throw StorageException.saveFailed(e);
     }

@@ -14,7 +14,7 @@ class StorageService {
       // 웹: 메모리에 저장
       final newRecord = record.copyWith(id: _nextId++);
       _memoryRecords.add(newRecord);
-      print('웹 메모리 저장: ${_memoryRecords.length}개 레코드');
+      // Debug: 웹 메모리 저장: ${_memoryRecords.length}개 레코드
       return newRecord.id!;
     } else {
       // 모바일: SQLite 사용
@@ -42,7 +42,7 @@ class StorageService {
       // 최신순 정렬
       results.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       
-      print('웹 메모리 조회: ${results.length}개 레코드');
+      // Debug: 웹 메모리 조회: ${results.length}개 레코드
       return results;
     } else {
       // 모바일: SQLite 사용
@@ -58,7 +58,7 @@ class StorageService {
     if (kIsWeb) {
       // 웹: 메모리에서 삭제
       _memoryRecords.removeWhere((r) => r.id == id);
-      print('웹 메모리 삭제: ID $id');
+      // Debug: 웹 메모리 삭제: ID $id
     } else {
       // 모바일: SQLite 사용
       await DatabaseService.deleteRecord(id);
@@ -70,7 +70,7 @@ class StorageService {
     if (kIsWeb) {
       // 웹: 메모리 초기화
       _memoryRecords.clear();
-      print('웹 메모리 전체 삭제');
+      // Debug: 웹 메모리 전체 삭제
     } else {
       // 모바일: SQLite 사용 - 모든 레코드 개별 삭제
       final records = await DatabaseService.getRecords();
@@ -85,34 +85,39 @@ class StorageService {
   /// 테스트용 샘플 데이터 추가
   static Future<void> addSampleData() async {
     if (kIsWeb) {
+      final now = DateTime.now();
+      final yesterday = now.subtract(Duration(days: 1));
+      
       final sampleRecords = [
+        // 어제 기록 2개
         FishingRecord(
           species: '고등어',
           count: 5,
           latitude: 35.1796,
           longitude: 129.0756,
-          timestamp: DateTime.now().subtract(Duration(hours: 2)),
+          timestamp: DateTime(yesterday.year, yesterday.month, yesterday.day, 14, 30),
         ),
         FishingRecord(
           species: '갈치',
           count: 3,
           latitude: 35.1800,
           longitude: 129.0760,
-          timestamp: DateTime.now().subtract(Duration(hours: 1)),
+          timestamp: DateTime(yesterday.year, yesterday.month, yesterday.day, 16, 45),
         ),
+        // 오늘 기록 1개
         FishingRecord(
           species: '전어',
           count: 10,
           latitude: 35.1810,
           longitude: 129.0770,
-          timestamp: DateTime.now(),
+          timestamp: DateTime(now.year, now.month, now.day, 10, 15),
         ),
       ];
       
       for (final record in sampleRecords) {
         await addRecord(record);
       }
-      print('샘플 데이터 추가 완료');
+      // Debug: 샘플 데이터 추가 완료
     }
   }
 }

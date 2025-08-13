@@ -96,11 +96,12 @@ class _HomeAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 200,
+      expandedHeight: 150,
       floating: false,
       pinned: true,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true,
         title: const Text(
           '수산생명자원 GPS',
           style: TextStyle(
@@ -179,10 +180,11 @@ class _OptimizedStatisticsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<AppStateProvider, ({int totalRecords, int todayRecords, Map<String, int> speciesCount})>(
+    return Selector<AppStateProvider, ({int totalRecords, int todayRecords, int yesterdayRecords, Map<String, int> speciesCount})>(
       selector: (_, provider) => (
         totalRecords: provider.totalRecords,
         todayRecords: provider.todayRecordCount,
+        yesterdayRecords: provider.yesterdayRecordCount,
         speciesCount: provider.speciesCount,
       ),
       builder: (context, data, _) {
@@ -216,6 +218,19 @@ class _OptimizedStatisticsSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppDimensions.paddingM),
+                Expanded(
+                  child: _StatCard(
+                    title: '어제 기록',
+                    value: '${data.yesterdayRecords}',
+                    icon: Icons.event,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppDimensions.paddingM),
+            Row(
+              children: [
                 Expanded(
                   child: _StatCard(
                     title: '종 수',

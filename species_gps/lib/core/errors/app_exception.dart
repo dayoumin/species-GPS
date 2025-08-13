@@ -163,3 +163,24 @@ class PermissionException extends AppException {
         code: 'PERMISSION_PERMANENTLY_DENIED',
       );
 }
+
+/// 오디오 관련 예외
+class AudioException extends AppException {
+  const AudioException({
+    required String message,
+    String? code,
+    dynamic originalError,
+  }) : super(message: message, code: code, originalError: originalError);
+  
+  factory AudioException.recordingFailed(dynamic error) => AudioException(
+        message: '녹음에 실패했습니다.',
+        code: 'AUDIO_RECORDING_FAILED',
+        originalError: error,
+      );
+  
+  factory AudioException.playbackFailed(dynamic error) => AudioException(
+        message: '재생에 실패했습니다.',
+        code: 'AUDIO_PLAYBACK_FAILED',
+        originalError: error,
+      );
+}

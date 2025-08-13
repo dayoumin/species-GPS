@@ -7,7 +7,8 @@
 .packages
 .pub-cache/
 .pub/
-/build/
+**/build/
+build/
 
 # Web related
 lib/generated_plugin_registrant.dart
@@ -18,11 +19,64 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android/iOS build artifacts
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/.gradle/
+/android/app/build/
+/android/build/
+*.apk
+*.aab
+*.ipa
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Local properties
+/android/local.properties
+/android/key.properties
+*.jks
+*.keystore
 
 # Windows specific
 species_gps/con
 con
+*.exe
+*.dll
+
+# Test coverage
+coverage/
+*.lcov
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+
+# Large binary files
+*.mp4
+*.avi
+*.mov
+*.zip
+*.tar.gz
+
+# Flutter specific
+species_gps/.dart_tool/
+species_gps/build/
+species_gps/android/.gradle/
+species_gps/android/app/build/
+species_gps/.flutter-plugins-dependencies
+species_gps/android/local.properties
+
+# Backup files
+*.backup
+*_backup.*
+audio_service_record_backup.dart
