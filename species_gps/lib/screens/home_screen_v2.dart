@@ -25,6 +25,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  bool _showAllSpecies = false; // 모든 종 표시 여부
 
   @override
   void initState() {
@@ -201,139 +202,419 @@ class _HomeScreenV2State extends State<HomeScreenV2>
         ),
         const SizedBox(height: AppDimensions.paddingM),
         if (provider.speciesCount.isNotEmpty || provider.categoryCount.isNotEmpty)
-          InfoCard(
-            title: '자원별 통계',
-            icon: Icons.pie_chart,
-            type: InfoCardType.info,
-            trailing: IconButton(
-              icon: Icon(
-                provider.showCategoryView ? Icons.expand_less : Icons.expand_more,
-                color: AppColors.primaryBlue,
-              ),
-              onPressed: provider.toggleCategoryView,
-              tooltip: provider.showCategoryView ? '종별 보기' : '분류군별 보기',
-            ),
-            content: _buildStatisticsContent(provider),
-          ),
+          _buildEnhancedStatisticsCard(provider),
       ],
     );
   }
 
-  Widget _buildStatisticsContent(AppStateProvider provider) {
-    if (provider.showCategoryView && provider.categoryCount.isNotEmpty) {
-      // 분류군별 통계 보기
-      return Column(
+  Widget _buildEnhancedStatisticsCard(AppStateProvider provider) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
         children: [
-          ...provider.categoryCount.entries.map((categoryEntry) {
-            final category = categoryEntry.key;
-            final totalCount = categoryEntry.value;
-            final percentage = (totalCount / provider.totalRecords * 100).toStringAsFixed(1);
-            final categorySpecies = provider.categorySpeciesCount[category] ?? {};
-            
-            return Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(left: AppDimensions.paddingM),
-                leading: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: _getCategoryColor(category),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                title: Text(
-                  category.korean,
-                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+          // 헤더 및 토글
+          Padding(
+            padding: const EdgeInsets.all(AppDimensions.paddingL),
+            child: Column(
+              children: [
+                Row(
                   children: [
-                    Text(
-                      '$totalCount마리',
-                      style: AppTextStyles.labelLarge,
+                    Icon(
+                      Icons.pie_chart,
+                      color: AppColors.primaryBlue,
+                      size: 24,
                     ),
                     const SizedBox(width: AppDimensions.paddingS),
                     Text(
-                      '($percentage%)',
-                      style: AppTextStyles.bodySmall,
+                      '자원별 통계',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Segmented Button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildSegmentButton(
+                            label: '종별',
+                            icon: Icons.pets,
+                            isSelected: !provider.showCategoryView,
+                            onTap: () {
+                              if (provider.showCategoryView) {
+                                provider.toggleCategoryView();
+                              }
+                            },
+                          ),
+                          _buildSegmentButton(
+                            label: '분류군',
+                            icon: Icons.category,
+                            isSelected: provider.showCategoryView,
+                            onTap: () {
+                              if (!provider.showCategoryView) {
+                                provider.toggleCategoryView();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                children: categorySpecies.entries.map((speciesEntry) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingXXS),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _getCategoryColor(category).withOpacity(0.5),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: AppDimensions.paddingS),
-                        Expanded(
-                          child: Text(
-                            speciesEntry.key,
-                            style: AppTextStyles.bodySmall,
-                          ),
-                        ),
-                        Text(
-                          '${speciesEntry.value}마리',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                const SizedBox(height: AppDimensions.paddingM),
+                // 콘텐츠
+                _buildEnhancedStatisticsContent(provider),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentButton({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primaryBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : AppColors.textSecondary,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnhancedStatisticsContent(AppStateProvider provider) {
+    if (provider.showCategoryView && provider.categoryCount.isNotEmpty) {
+      // 분류군별 통계 보기
+      final sortedCategories = provider.categoryCount.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      
+      final displayCategories = _showAllSpecies 
+          ? sortedCategories 
+          : sortedCategories.take(3).toList();
+
+      return Column(
+        children: [
+          ...displayCategories.map((categoryEntry) {
+            final category = categoryEntry.key;
+            final totalCount = categoryEntry.value;
+            final percentage = (totalCount / provider.totalRecords * 100);
+            final categorySpecies = provider.categorySpeciesCount[category] ?? {};
+            final index = sortedCategories.indexOf(categoryEntry);
+            
+            return _buildStatisticItem(
+              rank: index < 3 ? index + 1 : null,
+              title: category.korean,
+              count: totalCount,
+              percentage: percentage,
+              color: _getCategoryColor(category),
+              icon: _getCategoryIcon(category),
+              expandedContent: categorySpecies.entries.map((speciesEntry) {
+                return Padding(
+                  padding: const EdgeInsets.only(
+                    left: AppDimensions.paddingL,
+                    top: AppDimensions.paddingXS,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: _getCategoryColor(category).withOpacity(0.6),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: AppDimensions.paddingS),
+                      Expanded(
+                        child: Text(
+                          speciesEntry.key,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${speciesEntry.value}마리',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             );
           }).toList(),
+          if (sortedCategories.length > 3 && !_showAllSpecies)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _showAllSpecies = true;
+                });
+              },
+              child: Text('+ ${sortedCategories.length - 3}개 더보기'),
+            ),
+          if (_showAllSpecies && sortedCategories.length > 3)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _showAllSpecies = false;
+                });
+              },
+              child: const Text('접기'),
+            ),
         ],
       );
     } else {
-      // 종별 통계 보기 (기존 방식)
+      // 종별 통계 보기
+      final sortedSpecies = provider.speciesCount.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      
+      final displaySpecies = _showAllSpecies 
+          ? sortedSpecies 
+          : sortedSpecies.take(3).toList();
+
       return Column(
-        children: provider.speciesCount.entries.map((entry) {
-          final percentage = (entry.value / provider.totalRecords * 100).toStringAsFixed(1);
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingXS),
-            child: Row(
-              children: [
+        children: [
+          ...displaySpecies.asMap().entries.map((entry) {
+            final index = entry.key;
+            final species = entry.value;
+            final percentage = (species.value / provider.totalRecords * 100);
+            
+            return _buildStatisticItem(
+              rank: index < 3 ? index + 1 : null,
+              title: species.key,
+              count: species.value,
+              percentage: percentage,
+              color: AppColors.primaryBlue.withOpacity(0.8 - (index * 0.15)),
+              icon: Icons.pets,
+            );
+          }).toList(),
+          if (sortedSpecies.length > 3 && !_showAllSpecies)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _showAllSpecies = true;
+                });
+              },
+              child: Text('+ ${sortedSpecies.length - 3}개 더보기'),
+            ),
+          if (_showAllSpecies && sortedSpecies.length > 3)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _showAllSpecies = false;
+                });
+              },
+              child: const Text('접기'),
+            ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildStatisticItem({
+    int? rank,
+    required String title,
+    required int count,
+    required double percentage,
+    required Color color,
+    required IconData icon,
+    List<Widget>? expandedContent,
+  }) {
+    final bool isExpandable = expandedContent != null && expandedContent.isNotEmpty;
+    
+    return isExpandable
+        ? Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: _buildStatisticItemContent(
+                rank: rank,
+                title: title,
+                count: count,
+                percentage: percentage,
+                color: color,
+                icon: icon,
+              ),
+              children: expandedContent,
+            ),
+          )
+        : _buildStatisticItemContent(
+            rank: rank,
+            title: title,
+            count: count,
+            percentage: percentage,
+            color: color,
+            icon: icon,
+          );
+  }
+
+  Widget _buildStatisticItemContent({
+    int? rank,
+    required String title,
+    required int count,
+    required double percentage,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingS),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // 순위 표시
+              if (rank != null)
                 Container(
-                  width: 12,
-                  height: 12,
+                  width: 28,
+                  height: 28,
+                  margin: const EdgeInsets.only(right: AppDimensions.paddingS),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryBlue.withOpacity(
-                      0.7 - (provider.speciesCount.keys.toList().indexOf(entry.key) * 0.2),
-                    ),
+                    color: rank == 1 
+                        ? const Color(0xFFFFD700)
+                        : rank == 2 
+                            ? const Color(0xFFC0C0C0)
+                            : const Color(0xFFCD7F32),
                     shape: BoxShape.circle,
                   ),
-                ),
-                const SizedBox(width: AppDimensions.paddingS),
-                Expanded(
-                  child: Text(
-                    entry.key,
-                    style: AppTextStyles.bodyMedium,
+                  child: Center(
+                    child: Text(
+                      rank.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  '${entry.value}마리',
-                  style: AppTextStyles.labelLarge,
+              // 아이콘
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: AppDimensions.paddingS),
-                Text(
-                  '($percentage%)',
-                  style: AppTextStyles.bodySmall,
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: color,
                 ),
-              ],
+              ),
+              const SizedBox(width: AppDimensions.paddingM),
+              // 이름
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              // 개수와 퍼센트
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$count마리',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                  Text(
+                    '${percentage.toStringAsFixed(1)}%',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.paddingS),
+          // 프로그레스 바
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: percentage / 100,
+              minHeight: 6,
+              backgroundColor: color.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
-          );
-        }).toList(),
-      );
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(MarineCategory category) {
+    switch (category) {
+      case MarineCategory.fish:
+        return Icons.sailing;
+      case MarineCategory.mollusk:
+        return Icons.circle;
+      case MarineCategory.cephalopod:
+        return Icons.scatter_plot;
+      case MarineCategory.crustacean:
+        return Icons.pest_control;
+      case MarineCategory.echinoderm:
+        return Icons.star;
+      case MarineCategory.seaweed:
+        return Icons.grass;
+      case MarineCategory.other:
+        return Icons.more_horiz;
     }
   }
   
