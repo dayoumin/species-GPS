@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/fishing_record.dart';
+import '../models/marine_category.dart';
 import '../providers/app_state_provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
@@ -34,6 +35,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
   DateTime? _endDate;
   String _speciesSearchQuery = '';
   final TextEditingController _speciesSearchController = TextEditingController();
+  bool _showCategoryView = false; // 분류군별 통계 보기
 
   @override
   void initState() {
@@ -354,7 +356,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('어종: ${record.species}'),
+                    Text('자원: ${record.species}'),
                     Text('개체수: ${record.count}마리'),
                     Text('날짜: ${_dateFormat.format(record.timestamp)}'),
                     if (record.notes?.isNotEmpty == true)
@@ -367,7 +369,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                 text: TextSpan(
                   style: TextStyle(color: Colors.grey[700], fontSize: 14),
                   children: [
-                    const TextSpan(text: '실수 방지를 위해 어종명 '),
+                    const TextSpan(text: '실수 방지를 위해 자원명 '),
                     TextSpan(
                       text: '"${record.species}"',
                       style: const TextStyle(
@@ -408,7 +410,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
               if (!isValid && confirmController.text.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '어종명이 일치하지 않습니다',
+                  '자원명이 일치하지 않습니다',
                   style: TextStyle(
                     color: AppColors.error,
                     fontSize: 12,
@@ -545,7 +547,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
               fontSize: 16,
             ),
             decoration: InputDecoration(
-              hintText: '어종, 메모, 날짜 검색...',
+              hintText: '자원명, 메모, 날짜 검색...',
               hintStyle: TextStyle(
                 color: AppColors.textHint,
                 fontSize: 16,
@@ -940,7 +942,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
         ),
         const SizedBox(width: 8),
         const Text(
-          '어종:',
+          '자원:',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -953,7 +955,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
             focusNode: FocusNode(),
             optionsBuilder: (TextEditingValue textEditingValue) {
               if (textEditingValue.text.isEmpty) {
-                return ['전체 어종', ...availableSpecies];
+                return ['전체 자원', ...availableSpecies];
               }
               
               // 검색어로 필터링
@@ -963,15 +965,15 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
               }).toList();
               
               // 전체 옵션도 검색 가능하게
-              if ('전체'.contains(searchLower) || '전체 어종'.contains(searchLower)) {
-                return ['전체 어종', ...filtered];
+              if ('전체'.contains(searchLower) || '전체 자원'.contains(searchLower)) {
+                return ['전체 자원', ...filtered];
               }
               
               return filtered;
             },
             onSelected: (String selection) {
               setState(() {
-                if (selection == '전체 어종') {
+                if (selection == '전체 자원') {
                   _selectedSpecies = null;
                   _speciesSearchController.clear();
                 } else {
@@ -985,7 +987,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                 controller: textEditingController,
                 focusNode: focusNode,
                 decoration: InputDecoration(
-                  hintText: '어종 검색/선택... (입력 후 엔터 또는 목록에서 선택)',
+                  hintText: '자원 검색/선택... (입력 후 엔터 또는 목록에서 선택)',
                   prefixIcon: Icon(
                     Icons.search,
                     color: AppColors.primaryBlue,
@@ -1091,7 +1093,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                       itemCount: options.length,
                       itemBuilder: (BuildContext context, int index) {
                         final option = options.elementAt(index);
-                        final isAll = option == '전체 어종';
+                        final isAll = option == '전체 자원';
                         return ListTile(
                           dense: true,
                           leading: Icon(
@@ -1170,7 +1172,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                         icon: Icons.pets,
                       ),
                       _StatItem(
-                        label: '어종 수',
+                        label: '자원 수',
                         value: speciesStats.length.toString(),
                         icon: Icons.category,
                       ),
@@ -1182,63 +1184,252 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
           ),
           const SizedBox(height: AppDimensions.paddingL),
           
-          // 어종별 통계
-          Text(
-            '어종별 개체수',
-            style: AppTextStyles.headlineMedium,
+          // 자원별 통계
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _showCategoryView ? '분류군별 개체수' : '자원별 개체수',
+                style: AppTextStyles.headlineMedium,
+              ),
+              IconButton(
+                icon: Icon(
+                  _showCategoryView ? Icons.expand_less : Icons.expand_more,
+                  color: AppColors.primaryBlue,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showCategoryView = !_showCategoryView;
+                  });
+                },
+                tooltip: _showCategoryView ? '자원별 보기' : '분류군별 보기',
+              ),
+            ],
           ),
           const SizedBox(height: AppDimensions.paddingM),
           
-          ...sortedSpecies.map((entry) {
-            final percentage = (entry.value / totalCount * 100);
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppDimensions.paddingS),
-              child: Padding(
-                padding: const EdgeInsets.all(AppDimensions.paddingM),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            entry.key,
-                            style: AppTextStyles.bodyLarge,
-                          ),
-                        ),
-                        Text(
-                          '${entry.value}마리',
-                          style: AppTextStyles.labelLarge,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppDimensions.paddingS),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-                      child: LinearProgressIndicator(
-                        value: percentage / 100,
-                        minHeight: 8,
-                        backgroundColor: AppColors.divider,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.primaryBlue,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.paddingXS),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '${percentage.toStringAsFixed(1)}%',
-                        style: AppTextStyles.labelSmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
+          // 분류군별 또는 자원별 통계 표시
+          _showCategoryView 
+              ? _buildCategoryStatistics(records, totalCount)
+              : _buildSpeciesStatistics(sortedSpecies, totalCount),
         ],
       ),
     );
+  }
+
+  Widget _buildSpeciesStatistics(List<MapEntry<String, int>> sortedSpecies, int totalCount) {
+    return Column(
+      children: sortedSpecies.map((entry) {
+        final percentage = (entry.value / totalCount * 100);
+        return Card(
+          margin: const EdgeInsets.only(bottom: AppDimensions.paddingS),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.paddingM),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entry.key,
+                        style: AppTextStyles.bodyLarge,
+                      ),
+                    ),
+                    Text(
+                      '${entry.value}마리',
+                      style: AppTextStyles.labelLarge,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.paddingS),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+                  child: LinearProgressIndicator(
+                    value: percentage / 100,
+                    minHeight: 8,
+                    backgroundColor: AppColors.divider,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primaryBlue,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.paddingXS),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${percentage.toStringAsFixed(1)}%',
+                    style: AppTextStyles.labelSmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCategoryStatistics(List<FishingRecord> records, int totalCount) {
+    // 분류군별 통계 계산
+    final categoryStats = <MarineCategory, int>{};
+    final categorySpeciesStats = <MarineCategory, Map<String, int>>{};
+    
+    for (final record in records) {
+      // 분류군별 개체수
+      categoryStats[record.category] = 
+          (categoryStats[record.category] ?? 0) + record.count;
+      
+      // 분류군별 종별 개체수
+      if (!categorySpeciesStats.containsKey(record.category)) {
+        categorySpeciesStats[record.category] = {};
+      }
+      categorySpeciesStats[record.category]![record.species] = 
+          (categorySpeciesStats[record.category]![record.species] ?? 0) + record.count;
+    }
+    
+    final sortedCategories = categoryStats.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Column(
+      children: sortedCategories.map((categoryEntry) {
+        final category = categoryEntry.key;
+        final categoryCount = categoryEntry.value;
+        final percentage = (categoryCount / totalCount * 100);
+        final speciesInCategory = categorySpeciesStats[category] ?? {};
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: AppDimensions.paddingM),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.paddingM,
+                vertical: AppDimensions.paddingS,
+              ),
+              childrenPadding: const EdgeInsets.only(
+                left: AppDimensions.paddingL,
+                right: AppDimensions.paddingM,
+                bottom: AppDimensions.paddingM,
+              ),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _getCategoryColor(category).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _getCategoryIcon(category),
+                  color: _getCategoryColor(category),
+                  size: 24,
+                ),
+              ),
+              title: Text(
+                category.korean,
+                style: AppTextStyles.bodyLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Text(
+                '${speciesInCategory.length}종',
+                style: AppTextStyles.labelSmall,
+              ),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${categoryCount}마리',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: _getCategoryColor(category),
+                    ),
+                  ),
+                  Text(
+                    '${percentage.toStringAsFixed(1)}%',
+                    style: AppTextStyles.labelSmall,
+                  ),
+                ],
+              ),
+              children: speciesInCategory.entries.map((speciesEntry) {
+                final speciesPercentage = (speciesEntry.value / categoryCount * 100);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingXS),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(right: AppDimensions.paddingS),
+                        decoration: BoxDecoration(
+                          color: _getCategoryColor(category).withOpacity(0.6),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          speciesEntry.key,
+                          style: AppTextStyles.bodyMedium,
+                        ),
+                      ),
+                      Text(
+                        '${speciesEntry.value}마리',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                      const SizedBox(width: AppDimensions.paddingS),
+                      Text(
+                        '(${speciesPercentage.toStringAsFixed(1)}%)',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Color _getCategoryColor(MarineCategory category) {
+    switch (category) {
+      case MarineCategory.fish:
+        return AppColors.primaryBlue;
+      case MarineCategory.mollusk:
+        return const Color(0xFFFF9800);
+      case MarineCategory.cephalopod:
+        return const Color(0xFF9C27B0);
+      case MarineCategory.crustacean:
+        return AppColors.secondaryGreen;
+      case MarineCategory.echinoderm:
+        return const Color(0xFF00BCD4);
+      case MarineCategory.seaweed:
+        return const Color(0xFF4CAF50);
+      case MarineCategory.other:
+        return AppColors.textSecondary;
+    }
+  }
+
+  IconData _getCategoryIcon(MarineCategory category) {
+    switch (category) {
+      case MarineCategory.fish:
+        return Icons.sailing;
+      case MarineCategory.mollusk:
+        return Icons.circle;
+      case MarineCategory.cephalopod:
+        return Icons.scatter_plot;
+      case MarineCategory.crustacean:
+        return Icons.pest_control;
+      case MarineCategory.echinoderm:
+        return Icons.star;
+      case MarineCategory.seaweed:
+        return Icons.grass;
+      case MarineCategory.other:
+        return Icons.more_horiz;
+    }
   }
   
   // 기간별 필터링 적용
