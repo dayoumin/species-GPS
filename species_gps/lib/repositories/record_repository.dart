@@ -1,5 +1,5 @@
 import '../models/fishing_record.dart';
-import '../services/database_service.dart';
+import '../services/storage_service.dart';
 import '../core/utils/result.dart';
 import '../core/errors/app_exception.dart';
 import '../core/utils/app_logger.dart';
@@ -47,7 +47,7 @@ class RecordRepository implements IRecordRepository {
     try {
       final stopwatch = Stopwatch()..start();
       
-      final records = await DatabaseService.getRecords(
+      final records = await StorageService.getRecords(
         startDate: startDate,
         endDate: endDate,
       );
@@ -84,7 +84,7 @@ class RecordRepository implements IRecordRepository {
     try {
       final stopwatch = Stopwatch()..start();
       
-      final records = await DatabaseService.getRecordsPaged(
+      final records = await StorageService.getRecordsPaged(
         offset: offset,
         limit: limit,
         startDate: startDate,
@@ -120,7 +120,7 @@ class RecordRepository implements IRecordRepository {
     try {
       final stopwatch = Stopwatch()..start();
       
-      final id = await DatabaseService.insertRecord(record);
+      final id = await StorageService.addRecord(record);
       
       stopwatch.stop();
       
@@ -154,7 +154,7 @@ class RecordRepository implements IRecordRepository {
       
       final stopwatch = Stopwatch()..start();
       
-      await DatabaseService.updateRecord(record);
+      await StorageService.updateRecord(record);
       
       stopwatch.stop();
       
@@ -181,7 +181,7 @@ class RecordRepository implements IRecordRepository {
     try {
       final stopwatch = Stopwatch()..start();
       
-      await DatabaseService.deleteRecord(id);
+      await StorageService.deleteRecord(id);
       
       stopwatch.stop();
       
@@ -206,7 +206,7 @@ class RecordRepository implements IRecordRepository {
   @override
   Future<Result<int>> getTotalCount() async {
     try {
-      final count = await DatabaseService.getTotalCount();
+      final count = await StorageService.getTotalCount();
       
       AppLogger.database(
         operation: 'getTotalCount',
@@ -226,7 +226,7 @@ class RecordRepository implements IRecordRepository {
   @override
   Future<Result<Map<String, int>>> getSpeciesCount() async {
     try {
-      final counts = await DatabaseService.getSpeciesCount();
+      final counts = await StorageService.getSpeciesCount();
       
       AppLogger.database(
         operation: 'getSpeciesCount',
@@ -246,7 +246,7 @@ class RecordRepository implements IRecordRepository {
   @override
   Future<Result<FishingRecord?>> getRecordById(int id) async {
     try {
-      final records = await DatabaseService.getRecords();
+      final records = await StorageService.getRecords();
       final record = records.firstWhere(
         (r) => r.id == id,
         orElse: () => throw DatabaseException.notFound('Record not found: $id'),
@@ -279,7 +279,7 @@ class RecordRepository implements IRecordRepository {
       final stopwatch = Stopwatch()..start();
       
       // 모든 레코드를 가져와서 필터링 (간단한 구현)
-      final allRecords = await DatabaseService.getRecords();
+      final allRecords = await StorageService.getRecords();
       
       final filteredRecords = allRecords.where((record) {
         final searchLower = query.toLowerCase();

@@ -5,7 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/fishing_record.dart';
 import '../services/camera_service.dart';
 import '../services/location_service.dart';
-import '../services/database_service.dart';
+import '../services/storage_service.dart';
 
 enum RecordMode { camera, detailed }
 
@@ -97,7 +97,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         timestamp: DateTime.now(),
       );
 
-      await DatabaseService.insertRecord(record);
+      await StorageService.addRecord(record);
 
       if (mounted) {
         Navigator.pop(context, true);

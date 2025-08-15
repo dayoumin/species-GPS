@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/location_service.dart';
 import '../services/permission_service.dart';
-import '../services/database_service.dart';
+import '../services/storage_service.dart';
 import 'add_record_screen.dart';
 import 'records_list_screen.dart';
 
@@ -33,8 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _currentPosition = await LocationService.getCurrentPosition();
     
     // 데이터베이스 통계 가져오기
-    _totalRecords = await DatabaseService.getTotalCount();
-    _speciesCount = await DatabaseService.getSpeciesCount();
+    _totalRecords = await StorageService.getTotalCount();
+    _speciesCount = await StorageService.getSpeciesCount();
     
     if (mounted) {
       setState(() {

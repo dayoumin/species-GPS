@@ -4,6 +4,7 @@ import 'dart:io';
 import '../providers/app_state_provider.dart';
 import '../providers/map_state_provider.dart';
 import '../models/fishing_record.dart';
+import '../models/marine_category.dart';
 import '../services/audio_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
@@ -26,6 +27,8 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
   final _notesController = TextEditingController();
   
   final AudioService _audioService = AudioService();
+  
+  MarineCategory _selectedCategory = MarineCategory.fish; // 기본값: 어류
   
   String? _photoPath;
   String? _videoPath;
@@ -114,6 +117,10 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
           children: [
             // 위치 카드
             _buildLocationCard(provider),
+            const SizedBox(height: AppDimensions.paddingL),
+            
+            // 분류군 선택
+            _buildCategoryDropdown(),
             const SizedBox(height: AppDimensions.paddingL),
             
             // 종 정보 입력 (실시간 음성→텍스트 변환)
@@ -313,7 +320,61 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
     );
   }
   
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonFormField<MarineCategory>(
+      value: _selectedCategory,
+      decoration: InputDecoration(
+        labelText: '분류군 *',
+        labelStyle: const TextStyle(fontSize: 16),
+        prefixIcon: const Icon(Icons.category, size: 28),
+        helperText: '* 필수 입력 항목',
+        helperStyle: TextStyle(color: AppColors.error, fontSize: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.paddingL,
+          vertical: AppDimensions.paddingL,
+        ),
+      ),
+      items: MarineCategory.values.map((category) {
+        return DropdownMenuItem<MarineCategory>(
+          value: category,
+          child: Text(
+            category.korean,
+            style: const TextStyle(fontSize: 18),
+          ),
+        );
+      }).toList(),
+      onChanged: (MarineCategory? newValue) {
+        if (newValue != null) {
+          setState(() {
+            _selectedCategory = newValue;
+            // 카테고리 변경 시 종 이름 힌트 업데이트를n            _speciesController.clear();
+          });
+        }
+      },
+    );
+  }
+  
   Widget _buildSpeciesInput() {
+    // 분류군별 예시 설정
+    String getHintText() {
+      switch (_selectedCategory) {
+        case MarineCategory.fish:
+          return '예: 고등어, 갈치, 넙치, 미정';
+        case MarineCategory.mollusk:
+          return '예: 전복, 소라, 바지락, 미정';
+        case MarineCategory.cephalopod:
+          return '예: 오징어, 문어, 낙지, 미정';
+        case MarineCategory.crustacean:
+          return '예: 꽃게, 대게, 새우, 미정';
+        case MarineCategory.echinoderm:
+          return '예: 해삼, 성게, 불가사리, 미정';
+        case MarineCategory.seaweed:
+          return '예: 김, 미역, 다시마, 미정';
+        case MarineCategory.other:
+          return '종명 또는 "미정"을 입력하세요';
+      }
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -328,8 +389,8 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
                   labelText: '종 이름 *',
                   labelStyle: const TextStyle(fontSize: 16),
                   prefixIcon: const Icon(Icons.phishing, size: 28),
-                  hintText: '어종을 입력하세요',
-                  helperText: '* 필수 입력 항목',
+                  hintText: getHintText(),
+                  helperText: '* 국명, 학명 또는 "미정" 입력 가능',
                   helperStyle: TextStyle(color: AppColors.error, fontSize: 12),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppDimensions.paddingL,
@@ -1006,6 +1067,7 @@ class _AddRecordScreenV3State extends State<AddRecordScreenV3> {
     }
     
     final record = FishingRecord(
+      category: _selectedCategory,
       species: _speciesController.text,
       count: int.parse(_countController.text),
       latitude: provider.currentPosition!.latitude,

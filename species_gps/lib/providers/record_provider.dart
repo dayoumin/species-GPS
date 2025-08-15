@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/fishing_record.dart';
-import '../services/database_service.dart';
+import '../services/storage_service.dart';
 import '../core/errors/app_exception.dart';
 import '../core/utils/result.dart';
 
@@ -32,7 +32,7 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
-      _records = await DatabaseService.getRecords(
+      _records = await StorageService.getRecords(
         startDate: startDate,
         endDate: endDate,
       );
@@ -68,7 +68,7 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
-      final newRecords = await DatabaseService.getRecordsPaged(
+      final newRecords = await StorageService.getRecordsPaged(
         offset: _currentPage * _pageSize,
         limit: _pageSize,
         startDate: startDate,
@@ -100,7 +100,7 @@ class RecordProvider extends ChangeNotifier {
   /// 새 기록 추가
   Future<Result<int>> addRecord(FishingRecord record) async {
     try {
-      final id = await DatabaseService.insertRecord(record);
+      final id = await StorageService.addRecord(record);
       
       // 로컬 상태 업데이트 (DB 재조회 대신)
       final newRecord = record.copyWith(id: id);
@@ -123,7 +123,7 @@ class RecordProvider extends ChangeNotifier {
   /// 기록 삭제
   Future<Result<void>> deleteRecord(int id) async {
     try {
-      await DatabaseService.deleteRecord(id);
+      await StorageService.deleteRecord(id);
       
       // 로컬 상태 업데이트
       final index = _records.indexWhere((r) => r.id == id);
@@ -153,8 +153,8 @@ class RecordProvider extends ChangeNotifier {
   /// 통계 업데이트
   Future<void> _updateStatistics() async {
     try {
-      _totalRecords = await DatabaseService.getTotalCount();
-      _speciesCount = await DatabaseService.getSpeciesCount();
+      _totalRecords = await StorageService.getTotalCount();
+      _speciesCount = await StorageService.getSpeciesCount();
     } catch (e) {
       // 통계 업데이트 실패는 무시
     }

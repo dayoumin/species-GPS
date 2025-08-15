@@ -1,24 +1,18 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../core/theme/app_text_styles.dart';
 import '../providers/app_state_provider.dart';
+import '../models/marine_category.dart';
 import '../widgets/gps_status_card.dart';
 import '../widgets/info_card.dart';
-import '../widgets/primary_button.dart';
 import '../widgets/loading_indicator.dart';
 import '../core/utils/ui_helpers.dart';
-import '../services/export_service.dart';
 import '../services/storage_service.dart';
 import 'add_record_screen_v3.dart';
 import 'records_list_screen_v2.dart';
 import 'map_screen.dart';
-import 'map_screen_debug.dart';
-import 'data_analysis_screen.dart';
-import 'species_trend_screen.dart';
 
 class HomeScreenV2 extends StatefulWidget {
   const HomeScreenV2({super.key});
@@ -93,16 +87,19 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                   slivers: [
                     // App Bar
                     SliverAppBar(
-                      expandedHeight: 200,
+                      expandedHeight: 120,
                       floating: false,
                       pinned: true,
                       elevation: 0,
+                      centerTitle: true,
                       flexibleSpace: FlexibleSpaceBar(
+                        centerTitle: true,
                         title: const Text(
                           '수산생명자원 GPS',
                           style: TextStyle(
                             color: AppColors.white,
                             fontWeight: FontWeight.bold,
+                            fontSize: 20,
                           ),
                         ),
                         background: Container(
@@ -112,26 +109,14 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                           child: Stack(
                             children: [
                               Positioned(
-                                right: -50,
-                                top: -50,
+                                right: -30,
+                                top: -30,
                                 child: Container(
-                                  width: 200,
-                                  height: 200,
+                                  width: 120,
+                                  height: 120,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: AppColors.white.withOpacity(0.1),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: -30,
-                                bottom: -30,
-                                child: Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.white.withOpacity(0.05),
                                   ),
                                 ),
                               ),
@@ -163,11 +148,6 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                           _buildStatisticsSection(provider),
                           const SizedBox(height: AppDimensions.paddingL),
                           
-                          // Quick Export
-                          if (provider.totalRecords > 0) ...[
-                            _buildQuickExportSection(provider),
-                            const SizedBox(height: AppDimensions.paddingL),
-                          ],
                           
                           // Quick Actions
                           _buildQuickActions(context),
@@ -205,7 +185,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                 title: '오늘 기록',
                 value: provider.todayRecordCount.toString(),
                 icon: Icons.today,
-                color: AppColors.primaryBlue,
+                color: AppColors.secondaryGreen,
               ),
             ),
             const SizedBox(width: AppDimensions.paddingM),
@@ -214,62 +194,166 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                 title: '전체 기록',
                 value: provider.totalRecords.toString(),
                 icon: Icons.folder,
-                color: AppColors.secondaryGreen,
+                color: AppColors.primaryBlue,
               ),
             ),
           ],
         ),
         const SizedBox(height: AppDimensions.paddingM),
-        if (provider.speciesCount.isNotEmpty)
+        if (provider.speciesCount.isNotEmpty || provider.categoryCount.isNotEmpty)
           InfoCard(
-            title: '어종별 통계',
+            title: '자원별 통계',
             icon: Icons.pie_chart,
             type: InfoCardType.info,
-            content: Column(
-              children: provider.speciesCount.entries.map((entry) {
-                final percentage = (entry.value / provider.totalRecords * 100)
-                    .toStringAsFixed(1);
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppDimensions.paddingXS,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBlue.withOpacity(
-                            0.7 - (provider.speciesCount.keys.toList()
-                                .indexOf(entry.key) * 0.2),
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: AppDimensions.paddingS),
-                      Expanded(
-                        child: Text(
-                          entry.key,
-                          style: AppTextStyles.bodyMedium,
-                        ),
-                      ),
-                      Text(
-                        '${entry.value}마리',
-                        style: AppTextStyles.labelLarge,
-                      ),
-                      const SizedBox(width: AppDimensions.paddingS),
-                      Text(
-                        '($percentage%)',
-                        style: AppTextStyles.bodySmall,
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+            trailing: IconButton(
+              icon: Icon(
+                provider.showCategoryView ? Icons.expand_less : Icons.expand_more,
+                color: AppColors.primaryBlue,
+              ),
+              onPressed: provider.toggleCategoryView,
+              tooltip: provider.showCategoryView ? '종별 보기' : '분류군별 보기',
             ),
+            content: _buildStatisticsContent(provider),
           ),
       ],
     );
+  }
+
+  Widget _buildStatisticsContent(AppStateProvider provider) {
+    if (provider.showCategoryView && provider.categoryCount.isNotEmpty) {
+      // 분류군별 통계 보기
+      return Column(
+        children: [
+          ...provider.categoryCount.entries.map((categoryEntry) {
+            final category = categoryEntry.key;
+            final totalCount = categoryEntry.value;
+            final percentage = (totalCount / provider.totalRecords * 100).toStringAsFixed(1);
+            final categorySpecies = provider.categorySpeciesCount[category] ?? {};
+            
+            return Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(left: AppDimensions.paddingM),
+                leading: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: _getCategoryColor(category),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                title: Text(
+                  category.korean,
+                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$totalCount마리',
+                      style: AppTextStyles.labelLarge,
+                    ),
+                    const SizedBox(width: AppDimensions.paddingS),
+                    Text(
+                      '($percentage%)',
+                      style: AppTextStyles.bodySmall,
+                    ),
+                  ],
+                ),
+                children: categorySpecies.entries.map((speciesEntry) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingXXS),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _getCategoryColor(category).withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: AppDimensions.paddingS),
+                        Expanded(
+                          child: Text(
+                            speciesEntry.key,
+                            style: AppTextStyles.bodySmall,
+                          ),
+                        ),
+                        Text(
+                          '${speciesEntry.value}마리',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }).toList(),
+        ],
+      );
+    } else {
+      // 종별 통계 보기 (기존 방식)
+      return Column(
+        children: provider.speciesCount.entries.map((entry) {
+          final percentage = (entry.value / provider.totalRecords * 100).toStringAsFixed(1);
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingXS),
+            child: Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue.withOpacity(
+                      0.7 - (provider.speciesCount.keys.toList().indexOf(entry.key) * 0.2),
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: AppDimensions.paddingS),
+                Expanded(
+                  child: Text(
+                    entry.key,
+                    style: AppTextStyles.bodyMedium,
+                  ),
+                ),
+                Text(
+                  '${entry.value}마리',
+                  style: AppTextStyles.labelLarge,
+                ),
+                const SizedBox(width: AppDimensions.paddingS),
+                Text(
+                  '($percentage%)',
+                  style: AppTextStyles.bodySmall,
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    }
+  }
+  
+  Color _getCategoryColor(MarineCategory category) {
+    switch (category) {
+      case MarineCategory.fish:
+        return AppColors.primaryBlue;
+      case MarineCategory.mollusk:
+        return AppColors.warning;
+      case MarineCategory.cephalopod:
+        return AppColors.error;
+      case MarineCategory.crustacean:
+        return AppColors.secondaryGreen;
+      case MarineCategory.echinoderm:
+        return AppColors.info;
+      case MarineCategory.seaweed:
+        return AppColors.success;
+      case MarineCategory.other:
+        return AppColors.textSecondary;
+    }
   }
 
   Widget _buildQuickActions(BuildContext context) {
@@ -474,124 +558,6 @@ class _HomeScreenV2State extends State<HomeScreenV2>
         builder: (context) => const MapScreen(), // 원래 지도 화면으로 복원
       ),
     );
-  }
-  
-  Widget _buildQuickExportSection(AppStateProvider provider) {
-    return Column(
-      children: [
-        InfoCard(
-          title: '데이터 관리',
-          subtitle: '기록을 분석하고 내보낼 수 있습니다',
-          icon: Icons.insights,
-          type: InfoCardType.info,
-          content: Column(
-            children: [
-              // 데이터 분석 버튼
-              SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  text: '데이터 분석 (지도 시각화)',
-                  icon: Icons.analytics,
-                  size: ButtonSize.medium,
-                  variant: ButtonVariant.primary,
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DataAnalysisScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: AppDimensions.paddingM),
-              // 어종 동향 분석 버튼
-              SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  text: '어종 동향 분석',
-                  icon: Icons.trending_up,
-                  size: ButtonSize.medium,
-                  variant: ButtonVariant.outline,
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SpeciesTrendScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: AppDimensions.paddingM),
-              // 내보내기 버튼들
-              Row(
-                children: [
-                  Expanded(
-                    child: PrimaryButton(
-                      text: 'CSV',
-                      icon: Icons.table_chart,
-                      size: ButtonSize.small,
-                      variant: ButtonVariant.outline,
-                      onPressed: () => _quickExport('csv'),
-                    ),
-                  ),
-                  const SizedBox(width: AppDimensions.paddingM),
-                  Expanded(
-                    child: PrimaryButton(
-                      text: 'PDF',
-                      icon: Icons.picture_as_pdf,
-                      size: ButtonSize.small,
-                      variant: ButtonVariant.outline,
-                      onPressed: () => _quickExport('pdf'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Future<void> _quickExport(String format) async {
-    final provider = context.read<AppStateProvider>();
-    final todayRecords = provider.getFilteredRecords(date: DateTime.now());
-    
-    if (todayRecords.isEmpty) {
-      UIHelpers.showSnackBar(
-        context,
-        message: '오늘 기록이 없습니다',
-        type: SnackBarType.warning,
-      );
-      return;
-    }
-    
-    final result = await UIHelpers.showLoadingDialog<File?>(
-      context,
-      message: '파일 생성 중...',
-      task: () async {
-        if (format == 'csv') {
-          final result = await ExportService.exportToCSV(todayRecords);
-          return result.dataOrNull;
-        } else {
-          final result = await ExportService.exportToPDF(
-            todayRecords,
-            title: '오늘의 수산생명자원 기록',
-          );
-          return result.dataOrNull;
-        }
-      },
-    );
-    
-    if (result != null) {
-      await ExportService.shareFile(
-        result,
-        subject: '오늘의 수산생명자원 기록',
-        text: '${DateFormat('yyyy-MM-dd').format(DateTime.now())} 기록입니다.',
-      );
-    }
   }
 }
 

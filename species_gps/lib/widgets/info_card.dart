@@ -31,6 +31,7 @@ class InfoCard extends StatelessWidget {
 
     return Card(
       elevation: AppDimensions.cardElevation,
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppDimensions.radiusM),

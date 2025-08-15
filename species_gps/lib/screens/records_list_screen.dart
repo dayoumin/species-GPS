@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/fishing_record.dart';
-import '../services/database_service.dart';
+import '../services/storage_service.dart';
 
 class RecordsListScreen extends StatefulWidget {
   const RecordsListScreen({super.key});
@@ -24,7 +24,7 @@ class _RecordsListScreenState extends State<RecordsListScreen> {
 
   Future<void> _loadRecords() async {
     try {
-      final records = await DatabaseService.getRecords();
+      final records = await StorageService.getRecords();
       setState(() {
         _records = records;
         _isLoading = false;
@@ -59,7 +59,7 @@ class _RecordsListScreenState extends State<RecordsListScreen> {
     );
 
     if (confirm == true) {
-      await DatabaseService.deleteRecord(id);
+      await StorageService.deleteRecord(id);
       _loadRecords();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('기록이 삭제되었습니다')),

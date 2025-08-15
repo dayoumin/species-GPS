@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/fishing_record.dart';
+import '../models/marine_category.dart';
 import '../services/location_service.dart';
-import '../services/database_service.dart';
 import '../services/storage_service.dart';
 import '../services/camera_service_v2.dart';
 import '../core/errors/app_exception.dart';
@@ -22,6 +22,9 @@ class AppStateProvider extends ChangeNotifier {
   bool _isRecordsLoading = false;
   Map<String, int> _speciesCount = {};
   int _totalRecords = 0;
+  Map<MarineCategory, int> _categoryCount = {};
+  Map<MarineCategory, Map<String, int>> _categorySpeciesCount = {};
+  bool _showCategoryView = false; // 분류군별 보기 토글
   
   // 카메라 상태
   final CameraServiceV2 _cameraService = CameraServiceV2();
@@ -35,6 +38,9 @@ class AppStateProvider extends ChangeNotifier {
   bool get isRecordsLoading => _isRecordsLoading;
   Map<String, int> get speciesCount => Map.unmodifiable(_speciesCount);
   int get totalRecords => _totalRecords;
+  Map<MarineCategory, int> get categoryCount => Map.unmodifiable(_categoryCount);
+  Map<MarineCategory, Map<String, int>> get categorySpeciesCount => Map.unmodifiable(_categorySpeciesCount);
+  bool get showCategoryView => _showCategoryView;
   bool get hasLocation => _currentPosition != null;
   CameraServiceV2 get cameraService => _cameraService;
   bool get isCameraInitialized => _isCameraInitialized;
@@ -182,11 +188,34 @@ class AppStateProvider extends ChangeNotifier {
   /// 통계 업데이트
   Future<void> _updateStatistics() async {
     try {
-      _totalRecords = await DatabaseService.getTotalCount();
-      _speciesCount = await DatabaseService.getSpeciesCount();
+      _totalRecords = await StorageService.getTotalCount();
+      _speciesCount = await StorageService.getSpeciesCount();
+      
+      // 분류군별 통계 계산
+      _categoryCount = {};
+      _categorySpeciesCount = {};
+      
+      for (final record in _records) {
+        // 분류군별 개체수
+        _categoryCount[record.category] = 
+            (_categoryCount[record.category] ?? 0) + record.count;
+        
+        // 분류군별 종별 개체수
+        if (!_categorySpeciesCount.containsKey(record.category)) {
+          _categorySpeciesCount[record.category] = {};
+        }
+        _categorySpeciesCount[record.category]![record.species] = 
+            (_categorySpeciesCount[record.category]![record.species] ?? 0) + record.count;
+      }
     } catch (e) {
       // 통계 업데이트 실패는 무시
     }
+  }
+  
+  /// 분류군별 보기 토글
+  void toggleCategoryView() {
+    _showCategoryView = !_showCategoryView;
+    notifyListeners();
   }
   
   /// 필터링된 기록 반환
