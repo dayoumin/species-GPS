@@ -9,6 +9,7 @@ import '../widgets/gps_status_card.dart';
 import '../widgets/info_card.dart';
 import '../widgets/loading_indicator.dart';
 import '../core/utils/ui_helpers.dart';
+import '../core/utils/marine_category_utils.dart';
 import '../services/storage_service.dart';
 import 'add_record_screen_v3.dart';
 import 'records_list_screen_v2.dart';
@@ -398,8 +399,8 @@ class _HomeScreenV2State extends State<HomeScreenV2>
               title: category.korean,
               count: totalCount,
               percentage: percentage,
-              color: _getCategoryColor(category),
-              icon: _getCategoryIcon(category),
+              color: MarineCategoryUtils.getCategoryColor(category),
+              icon: MarineCategoryUtils.getCategoryIcon(category),
               expandedContent: categorySpecies.entries.map((speciesEntry) {
                 return Padding(
                   padding: const EdgeInsets.only(
@@ -412,7 +413,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                         width: 6,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: _getCategoryColor(category).withOpacity(0.6),
+                          color: MarineCategoryUtils.getCategoryColor(category).withOpacity(0.6),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -478,7 +479,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
               title: species.key,
               count: species.value,
               percentage: percentage,
-              color: AppColors.primaryBlue.withOpacity(0.8 - (index * 0.15)),
+              color: AppColors.primaryBlue.withOpacity((0.8 - index * 0.1).clamp(0.3, 0.8)),
               icon: Icons.pets,
             );
           }).toList(),
@@ -643,43 +644,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
     );
   }
 
-  IconData _getCategoryIcon(MarineCategory category) {
-    switch (category) {
-      case MarineCategory.fish:
-        return Icons.sailing;
-      case MarineCategory.mollusk:
-        return Icons.circle;
-      case MarineCategory.cephalopod:
-        return Icons.scatter_plot;
-      case MarineCategory.crustacean:
-        return Icons.pest_control;
-      case MarineCategory.echinoderm:
-        return Icons.star;
-      case MarineCategory.seaweed:
-        return Icons.grass;
-      case MarineCategory.other:
-        return Icons.more_horiz;
-    }
-  }
-  
-  Color _getCategoryColor(MarineCategory category) {
-    switch (category) {
-      case MarineCategory.fish:
-        return AppColors.primaryBlue;
-      case MarineCategory.mollusk:
-        return AppColors.warning;
-      case MarineCategory.cephalopod:
-        return AppColors.error;
-      case MarineCategory.crustacean:
-        return AppColors.secondaryGreen;
-      case MarineCategory.echinoderm:
-        return AppColors.info;
-      case MarineCategory.seaweed:
-        return AppColors.success;
-      case MarineCategory.other:
-        return AppColors.textSecondary;
-    }
-  }
+  // 카테고리 색상과 아이콘은 MarineCategoryUtils에서 관리
 
   Widget _buildQuickActions(BuildContext context) {
     return Column(

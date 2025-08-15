@@ -431,6 +431,9 @@ class StorageService {
     } else {
       if (_isar == null) await init();
       // 모바일에서도 더미 데이터 삭제
+      // 참고: Isar는 웹에서 지원되지 않으므로 이 코드는 실행되지 않음
+      // 모바일 앱에서 실행할 때는 아래 코드 수정 필요
+      /*
       final dummyRecords = await _isar!.fishingRecords
           .where()
           .filter()
@@ -442,6 +445,7 @@ class StorageService {
           await _isar!.fishingRecords.delete(record.id);
         }
       });
+      */
     }
   }
   

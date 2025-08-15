@@ -9,6 +9,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/utils/ui_helpers.dart';
+import '../core/utils/marine_category_utils.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/primary_button.dart';
 import '../services/export_service.dart';
@@ -806,25 +807,201 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
         itemBuilder: (context, index) {
           final dateKey = groupedRecords.keys.elementAt(index);
           final dayRecords = groupedRecords[dateKey]!;
+          
+          // 날짜별 통계 계산
+          final speciesCount = <String, int>{};
+          int totalCount = 0;
+          for (final record in dayRecords) {
+            speciesCount[record.species] = 
+                (speciesCount[record.species] ?? 0) + record.count;
+            totalCount += record.count;
+          }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (index > 0)
-                const SizedBox(height: AppDimensions.paddingL),
-              Text(
-                dateKey,
-                style: AppTextStyles.labelLarge.copyWith(
-                  color: AppColors.textSecondary,
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index < groupedRecords.length - 1 ? AppDimensions.paddingM : 0,
+            ),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+              ),
+              child: Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.paddingL,
+                    vertical: AppDimensions.paddingS,
+                  ),
+                  childrenPadding: const EdgeInsets.only(
+                    left: AppDimensions.paddingM,
+                    right: AppDimensions.paddingM,
+                    bottom: AppDimensions.paddingM,
+                  ),
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('dd').format(dayRecords.first.timestamp),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('MMM').format(dayRecords.first.timestamp),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  title: Text(
+                    dateKey,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.category,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${speciesCount.length}종',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(
+                          Icons.pets,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${totalCount}마리',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(
+                          Icons.list,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${dayRecords.length}건',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${totalCount}마리',
+                          style: TextStyle(
+                            color: AppColors.primaryBlue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  children: [
+                    // 종별 요약
+                    Container(
+                      padding: const EdgeInsets.all(AppDimensions.paddingM),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '자원별 요약',
+                            style: AppTextStyles.labelLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: AppDimensions.paddingS),
+                          ...speciesCount.entries.map((entry) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryBlue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      entry.key,
+                                      style: AppTextStyles.bodySmall,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${entry.value}마리',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppDimensions.paddingM),
+                    // 상세 기록들
+                    ...dayRecords.map((record) => _RecordCard(
+                      record: record,
+                      onTap: () => _showRecordDetail(record),
+                      onDelete: () => _deleteRecord(record),
+                    )),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppDimensions.paddingS),
-              ...dayRecords.map((record) => _RecordCard(
-                record: record,
-                onTap: () => _showRecordDetail(record),
-                onDelete: () => _deleteRecord(record),
-              )),
-            ],
+            ),
           );
         },
       ),
@@ -1315,12 +1492,12 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: _getCategoryColor(category).withOpacity(0.2),
+                  color: MarineCategoryUtils.getCategoryColor(category).withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  _getCategoryIcon(category),
-                  color: _getCategoryColor(category),
+                  MarineCategoryUtils.getCategoryIcon(category),
+                  color: MarineCategoryUtils.getCategoryColor(category),
                   size: 24,
                 ),
               ),
@@ -1342,7 +1519,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                     '${categoryCount}마리',
                     style: AppTextStyles.labelLarge.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: _getCategoryColor(category),
+                      color: MarineCategoryUtils.getCategoryColor(category),
                     ),
                   ),
                   Text(
@@ -1362,7 +1539,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
                         height: 8,
                         margin: const EdgeInsets.only(right: AppDimensions.paddingS),
                         decoration: BoxDecoration(
-                          color: _getCategoryColor(category).withOpacity(0.6),
+                          color: MarineCategoryUtils.getCategoryColor(category).withOpacity(0.6),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -1394,43 +1571,7 @@ class _RecordsListScreenV2State extends State<RecordsListScreenV2>
     );
   }
 
-  Color _getCategoryColor(MarineCategory category) {
-    switch (category) {
-      case MarineCategory.fish:
-        return AppColors.primaryBlue;
-      case MarineCategory.mollusk:
-        return const Color(0xFFFF9800);
-      case MarineCategory.cephalopod:
-        return const Color(0xFF9C27B0);
-      case MarineCategory.crustacean:
-        return AppColors.secondaryGreen;
-      case MarineCategory.echinoderm:
-        return const Color(0xFF00BCD4);
-      case MarineCategory.seaweed:
-        return const Color(0xFF4CAF50);
-      case MarineCategory.other:
-        return AppColors.textSecondary;
-    }
-  }
-
-  IconData _getCategoryIcon(MarineCategory category) {
-    switch (category) {
-      case MarineCategory.fish:
-        return Icons.sailing;
-      case MarineCategory.mollusk:
-        return Icons.circle;
-      case MarineCategory.cephalopod:
-        return Icons.scatter_plot;
-      case MarineCategory.crustacean:
-        return Icons.pest_control;
-      case MarineCategory.echinoderm:
-        return Icons.star;
-      case MarineCategory.seaweed:
-        return Icons.grass;
-      case MarineCategory.other:
-        return Icons.more_horiz;
-    }
-  }
+  // 카테고리 색상과 아이콘은 MarineCategoryUtils에서 관리
   
   // 기간별 필터링 적용
   List<FishingRecord> _applyPeriodFilter(List<FishingRecord> records) {
