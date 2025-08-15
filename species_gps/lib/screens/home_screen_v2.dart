@@ -121,6 +121,50 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                                   ),
                                 ),
                               ),
+                              // 더미 데이터 알림 및 삭제 버튼
+                              if (StorageService.hasDummyData())
+                                Positioned(
+                                  bottom: 10,
+                                  right: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.9),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.warning,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        const Text(
+                                          '테스트 데이터',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 5),
+                                        GestureDetector(
+                                          onTap: () => _deleteDummyData(context),
+                                          child: const Icon(
+                                            Icons.delete,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -246,7 +290,7 @@ class _HomeScreenV2State extends State<HomeScreenV2>
                     // Segmented Button
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.backgroundLight,
+                        color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(20),
                       ),
                       padding: const EdgeInsets.all(2),
@@ -839,6 +883,46 @@ class _HomeScreenV2State extends State<HomeScreenV2>
         builder: (context) => const MapScreen(), // 원래 지도 화면으로 복원
       ),
     );
+  }
+
+  Future<void> _deleteDummyData(BuildContext context) async {
+    // 확인 다이얼로그 표시
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('테스트 데이터 삭제'),
+        content: const Text('모든 테스트 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      // 더미 데이터 삭제
+      await StorageService.deleteDummyData();
+      
+      // 데이터 다시 로드
+      if (mounted) {
+        context.read<AppStateProvider>().loadRecords();
+        
+        UIHelpers.showSnackBar(
+          context,
+          message: '테스트 데이터가 삭제되었습니다',
+          type: SnackBarType.success,
+        );
+      }
+    }
   }
 }
 
